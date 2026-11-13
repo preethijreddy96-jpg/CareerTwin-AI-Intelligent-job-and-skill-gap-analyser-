@@ -3,6 +3,7 @@ import secrets
 from datetime import datetime, timedelta
 from typing import Optional
 from urllib.parse import urlencode, quote
+from pydantic import BaseModel
 from fastapi import APIRouter, Depends, HTTPException, status, Request
 from fastapi.responses import RedirectResponse
 import requests
@@ -226,11 +227,26 @@ def google_auth(data: GoogleAuthRequest, db: Session = Depends(get_db)):
 
 @router.get("/google/status")
 def google_status():
-    """Checks if Google OAuth 2.0 Client ID is configured."""
+    """Checks if Google OAuth 2.0 Client ID is configured and returns the public client_id."""
     return {
-        "configured": bool(settings.GOOGLE_CLIENT_ID and settings.GOOGLE_CLIENT_SECRET),
-        "client_id": (settings.GOOGLE_CLIENT_ID[:12] + "...") if settings.GOOGLE_CLIENT_ID else None,
+        "configured": bool(settings.GOOGLE_CLIENT_ID),
+        "client_id": settings.GOOGLE_CLIENT_ID if settings.GOOGLE_CLIENT_ID else None,
         "redirect_uri": settings.GOOGLE_REDIRECT_URI
+    }
+
+class GoogleConfigUpdate(BaseModel):
+    client_id: str
+    client_secret: Optional[str] = None
+
+@router.post("/google/configure")
+def configure_google_oauth(data: GoogleConfigUpdate):
+    """Saves Google OAuth Client ID to backend settings so all devices (mobile & laptop) automatically use it."""
+    settings.GOOGLE_CLIENT_ID = data.client_id.strip()
+    if data.client_secret:
+        settings.GOOGLE_CLIENT_SECRET = data.client_secret.strip()
+    return {
+        "message": "Google Client ID successfully configured for all devices!",
+        "client_id": settings.GOOGLE_CLIENT_ID
     }
 
 @router.get("/google/login")
