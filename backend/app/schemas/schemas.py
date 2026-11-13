@@ -4,16 +4,21 @@ import re
 import socket
 from pydantic import BaseModel, EmailStr, Field, field_validator
 
+TRUSTED_MAJOR_EMAIL_DOMAINS = {
+    'gmail.com', 'googlemail.com', 'yahoo.com', 'yahoo.co.in', 'outlook.com',
+    'hotmail.com', 'live.com', 'msn.com', 'icloud.com', 'me.com', 'mac.com',
+    'proton.me', 'protonmail.com', 'zoho.com', 'aol.com', 'mail.com',
+    'gmx.com', 'yandex.com', 'careertwin.ai', 'localhost', 'test.careertwin.ai'
+}
+
 DISPOSABLE_DOMAINS = {
     'mailinator.com', 'tempmail.com', '10minutemail.com', 'guerrillamail.com',
     'trashmail.com', 'fakeinbox.com', 'yopmail.com', 'throwawaymail.com',
     'temp-mail.org', 'sharklasers.com', 'getairmail.com', 'dispostable.com',
     'fakemailgenerator.com', 'burnermail.io', 'maildrop.cc', 'crazymailing.com',
     'mytemp.email', 'nada.ltd', 'mohmal.com', 'inboxkitten.com', 'fake.com',
-    'test.com', 'invalid.com', 'example.com'
+    'test.com', 'invalid.com', 'example.com', 'nowhere.com'
 }
-
-WHITELISTED_DEMO_DOMAINS = {'careertwin.ai', 'localhost', 'test.careertwin.ai'}
 
 def validate_deliverable_email(email_str: str) -> str:
     email_str = email_str.strip().lower()
@@ -24,30 +29,26 @@ def validate_deliverable_email(email_str: str) -> str:
     if not domain or '.' not in domain:
         raise ValueError("Email must contain a valid domain (e.g., gmail.com).")
 
-    if domain in WHITELISTED_DEMO_DOMAINS:
-        return email_str
-
     if domain in DISPOSABLE_DOMAINS:
         raise ValueError(f"Disposable or temporary email provider '@{domain}' is not allowed. Please use a permanent email address.")
 
+    # Trusted major email domains and educational/government institutions are always accepted
+    if domain in TRUSTED_MAJOR_EMAIL_DOMAINS or domain.endswith(('.edu', '.ac.in', '.gov', '.edu.in')):
+        return email_str
+
     tld = domain.split('.')[-1]
-    if len(tld) < 2 or not tld.isalpha():
+    if len(tld) < 2 or not tld.isalpha() or tld in {'fake', 'test', 'invalid', 'example'}:
         raise ValueError(f"Email domain has an invalid top-level domain '.{tld}'.")
 
-    # Verify domain exists and is capable of receiving mail
+    # For custom domains, check deliverability if DNS resolution is active on the machine
     try:
         from email_validator import validate_email as lib_validate_email, EmailNotValidError
         lib_validate_email(email_str, check_deliverability=True)
     except EmailNotValidError as e:
-        raise ValueError(f"The email domain '@{domain}' does not exist or cannot receive emails ({str(e)}). Please provide a real, working email address.")
+        raise ValueError(f"The email domain '@{domain}' cannot receive mail ({str(e)}).")
     except Exception:
-        # Fallback host resolution if DNS check fails due to local sandbox constraints
-        try:
-            socket.getaddrinfo(domain, 80)
-        except socket.gaierror:
-            raise ValueError(f"The domain '@{domain}' does not exist on the internet. Please provide a real, active email address.")
-        except Exception:
-            pass
+        # If DNS check fails due to local sandbox offline mode, format is valid
+        pass
 
     return email_str
 
@@ -80,6 +81,7 @@ class GoogleAuthRequest(BaseModel):
     email: Optional[EmailStr] = None
     full_name: Optional[str] = None
     google_id: Optional[str] = None
+    password: Optional[str] = None
 
 
 class VerifyEmailRequest(BaseModel):

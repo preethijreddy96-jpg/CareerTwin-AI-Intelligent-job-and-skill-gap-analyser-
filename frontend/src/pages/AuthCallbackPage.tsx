@@ -49,3 +49,4 @@ export const AuthCallbackPage: React.FC = () => {
     </div>
   );
 };
+

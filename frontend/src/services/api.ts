@@ -39,7 +39,7 @@ export const authApi = {
   register: (data: { email: string; password: string; full_name: string }) => api.post('/auth/register', data),
   verifyEmail: (data: { email: string; code: string }) => api.post('/auth/verify-email', data),
   resendCode: (data: { email: string }) => api.post('/auth/resend-code', data),
-  googleAuth: (data: { credential?: string; email?: string; full_name?: string }) => api.post('/auth/google', data),
+  googleAuth: (data: { credential?: string; email?: string; full_name?: string; password?: string }) => api.post('/auth/google', data),
   getMe: () => api.get('/auth/me'),
 };
 

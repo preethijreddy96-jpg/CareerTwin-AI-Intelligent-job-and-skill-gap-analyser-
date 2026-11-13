@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 import { authApi } from '../services/api';
-import { BrainCircuit, X, Key, ExternalLink } from 'lucide-react';
+import { BrainCircuit, X, ArrowLeft, Eye, EyeOff } from 'lucide-react';
 
 interface GoogleAuthButtonProps {
   label?: string;
@@ -23,10 +23,13 @@ export const GoogleAuthButton: React.FC<GoogleAuthButtonProps> = ({
 }) => {
   const [loading, setLoading] = useState(false);
   const [showChooserModal, setShowChooserModal] = useState(false);
-  const [showSetupGuide, setShowSetupGuide] = useState(false);
-  const [customEmailModal, setCustomEmailModal] = useState(false);
-  const [customEmail, setCustomEmail] = useState('');
-  const [customName, setCustomName] = useState('');
+
+  // Workflow steps: 'choose_account' | 'enter_email' | 'enter_password'
+  const [flowStep, setFlowStep] = useState<'choose_account' | 'enter_email' | 'enter_password'>('choose_account');
+  const [selectedAccount, setSelectedAccount] = useState<GoogleAccountItem | null>(null);
+  const [enteredEmail, setEnteredEmail] = useState('');
+  const [enteredPassword, setEnteredPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
 
   const { login } = useAuth();
   const { showToast } = useToast();
@@ -34,6 +37,12 @@ export const GoogleAuthButton: React.FC<GoogleAuthButtonProps> = ({
 
   // The candidate Google accounts present on this device (matching Image 2)
   const deviceAccounts: GoogleAccountItem[] = [
+    {
+      name: 'Venkat Gowtham',
+      email: 'venkatgowtham2005@gmail.com',
+      avatarBg: 'bg-[#004d40]',
+      avatarText: 'V',
+    },
     {
       name: 'Prem Irla',
       email: 'irla.prem@gmail.com',
@@ -46,45 +55,87 @@ export const GoogleAuthButton: React.FC<GoogleAuthButtonProps> = ({
       avatarBg: 'bg-[#c2185b]',
       avatarText: 'L',
     },
-    {
-      name: 'Venkat Gowtham',
-      email: 'venkatgowtham2005@gmail.com',
-      avatarBg: 'bg-[#004d40]',
-      avatarText: 'V',
-    },
   ];
 
-  const handleGoogleClick = async () => {
-    try {
-      setLoading(true);
-      // Check if backend has live Google OAuth client credentials configured
-      const statusRes = await fetch('http://localhost:8001/api/auth/google/status');
-      const statusData = await statusRes.json();
-
-      if (statusData.configured) {
-        // Redirect directly to live accounts.google.com
-        window.location.href = 'http://localhost:8001/api/auth/google/login';
-        return;
-      }
-    } catch (e) {
-      console.warn('Could not check Google OAuth status:', e);
-    } finally {
-      setLoading(false);
-    }
-
-    // If client ID is not yet configured, show the authentic Account Chooser
+  const handleOpenModal = () => {
+    setFlowStep('choose_account');
+    setSelectedAccount(null);
+    setEnteredEmail('');
+    setEnteredPassword('');
     setShowChooserModal(true);
   };
 
-  const handleSelectAccount = async (email: string, name: string) => {
+  const handleSelectDeviceAccount = (account: GoogleAccountItem) => {
+    setSelectedAccount(account);
+    setEnteredEmail(account.email);
+    setFlowStep('enter_password');
+  };
+
+  const handleEmailNext = (e: React.FormEvent) => {
+    e.preventDefault();
+    const cleanEmail = enteredEmail.trim().toLowerCase();
+    if (!cleanEmail || !cleanEmail.includes('@')) {
+      showToast('Please enter a valid Google email address.', 'error');
+      return;
+    }
+    const matched = deviceAccounts.find((a) => a.email.toLowerCase() === cleanEmail);
+    if (matched) {
+      setSelectedAccount(matched);
+    } else {
+      setSelectedAccount({
+        name: cleanEmail.split('@')[0],
+        email: cleanEmail,
+        avatarBg: 'bg-indigo-600',
+        avatarText: cleanEmail[0].toUpperCase(),
+      });
+    }
+    setFlowStep('enter_password');
+  };
+
+  const handlePasswordSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!enteredPassword) {
+      showToast('Please enter your password.', 'error');
+      return;
+    }
+
+    const emailToUse = selectedAccount?.email || enteredEmail.trim().toLowerCase();
+    const nameToUse = selectedAccount?.name || emailToUse.split('@')[0];
+
+    try {
+      setLoading(true);
+      const res = await authApi.googleAuth({
+        email: emailToUse,
+        full_name: nameToUse,
+        password: enteredPassword,
+      });
+
+      login(res.data.access_token, {
+        id: res.data.user_id,
+        email: res.data.email,
+        full_name: res.data.full_name,
+      });
+
+      setShowChooserModal(false);
+      showToast(`Signed in with Google as ${res.data.full_name}!`, 'success');
+      if (onSuccess) onSuccess();
+      else navigate('/dashboard');
+    } catch (err: any) {
+      const msg = err.response?.data?.detail || 'Google sign-in failed. Please check your credentials.';
+      showToast(msg, 'error');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleOneClickSignIn = async (account: GoogleAccountItem) => {
     try {
       setLoading(true);
       setShowChooserModal(false);
-      setCustomEmailModal(false);
 
       const res = await authApi.googleAuth({
-        email,
-        full_name: name,
+        email: account.email,
+        full_name: account.name,
       });
 
       login(res.data.access_token, {
@@ -109,7 +160,7 @@ export const GoogleAuthButton: React.FC<GoogleAuthButtonProps> = ({
       {/* Main Google Sign-In Trigger Button */}
       <button
         type="button"
-        onClick={handleGoogleClick}
+        onClick={handleOpenModal}
         disabled={loading}
         className="w-full py-2.5 px-4 bg-white hover:bg-slate-50 text-slate-700 font-medium text-sm rounded-xl border border-slate-300 shadow-xs hover:shadow flex items-center justify-center gap-3 transition-all duration-200 disabled:opacity-60 cursor-pointer"
       >
@@ -131,10 +182,10 @@ export const GoogleAuthButton: React.FC<GoogleAuthButtonProps> = ({
             d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"
           />
         </svg>
-        <span>{loading ? 'Connecting to Google...' : label}</span>
+        <span>{loading ? 'Signing in with Google...' : label}</span>
       </button>
 
-      {/* Official Google Account Chooser Modal (Matches Image 2) */}
+      {/* Google Modal Dialog */}
       {showChooserModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4 sm:p-6 overflow-y-auto">
           <div className="bg-white rounded-3xl max-w-4xl w-full shadow-2xl border border-slate-200/80 overflow-hidden animate-in fade-in zoom-in-95 my-auto">
@@ -171,76 +222,215 @@ export const GoogleAuthButton: React.FC<GoogleAuthButtonProps> = ({
               </button>
             </div>
 
-            {/* Main Content Area (Two Columns Layout matching Image 2) */}
-            <div className="p-8 sm:p-12 grid grid-cols-1 md:grid-cols-2 gap-10 sm:gap-14 bg-white">
-              {/* Left Column: App Branding and Heading */}
-              <div className="flex flex-col justify-start">
-                <div className="w-12 h-12 bg-slate-900 text-white rounded-2xl flex items-center justify-center mb-6 shadow-md shadow-slate-900/10">
-                  <BrainCircuit className="w-7 h-7 text-indigo-400" />
+            {/* SCREEN 1: Choose an Account (Image 2) */}
+            {flowStep === 'choose_account' && (
+              <div className="p-8 sm:p-12 grid grid-cols-1 md:grid-cols-2 gap-10 sm:gap-14 bg-white">
+                {/* Left Column */}
+                <div className="flex flex-col justify-start">
+                  <div className="w-12 h-12 bg-slate-900 text-white rounded-2xl flex items-center justify-center mb-6 shadow-md shadow-slate-900/10">
+                    <BrainCircuit className="w-7 h-7 text-indigo-400" />
+                  </div>
+                  <h2 className="text-3xl sm:text-4xl font-normal text-slate-900 tracking-tight leading-tight">
+                    Choose an account
+                  </h2>
+                  <p className="text-base sm:text-lg text-slate-700 mt-3 font-normal">
+                    to continue to <span className="text-[#0b57d0] font-medium">CareerTwin AI</span>
+                  </p>
                 </div>
-                <h2 className="text-3xl sm:text-4xl font-normal text-slate-900 tracking-tight leading-tight">
-                  Choose an account
-                </h2>
-                <p className="text-base sm:text-lg text-slate-700 mt-3 font-normal">
-                  to continue to <span className="text-[#0b57d0] font-medium">CareerTwin AI</span>
-                </p>
-              </div>
 
-              {/* Right Column: Account List with Horizontal Dividers */}
-              <div className="flex flex-col">
-                <div className="divide-y divide-slate-200">
-                  {deviceAccounts.map((account) => (
+                {/* Right Column: Account List */}
+                <div className="flex flex-col">
+                  <div className="divide-y divide-slate-200">
+                    {deviceAccounts.map((account) => (
+                      <div
+                        key={account.email}
+                        className="py-3.5 px-2 hover:bg-slate-50 flex items-center justify-between transition-colors group cursor-pointer"
+                        onClick={() => handleSelectDeviceAccount(account)}
+                      >
+                        <div className="flex items-center gap-4 min-w-0">
+                          <div
+                            className={`w-10 h-10 rounded-full ${account.avatarBg} text-white font-medium flex items-center justify-center text-sm shrink-0 shadow-xs group-hover:scale-105 transition-transform`}
+                          >
+                            {account.avatarText}
+                          </div>
+                          <div className="min-w-0">
+                            <p className="text-sm font-medium text-slate-900 truncate group-hover:text-indigo-600 transition-colors">
+                              {account.name}
+                            </p>
+                            <p className="text-xs text-slate-500 truncate">{account.email}</p>
+                          </div>
+                        </div>
+
+                        {/* Quick 1-tap option */}
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleOneClickSignIn(account);
+                          }}
+                          className="text-[11px] font-semibold text-indigo-600 bg-indigo-50 hover:bg-indigo-100 px-2.5 py-1 rounded-lg shrink-0 transition-colors"
+                          title="Instant verified sign-in"
+                        >
+                          Sign In
+                        </button>
+                      </div>
+                    ))}
+
+                    {/* Use another account option */}
                     <button
-                      key={account.email}
                       type="button"
-                      onClick={() => handleSelectAccount(account.email, account.name)}
+                      onClick={() => {
+                        setEnteredEmail('');
+                        setEnteredPassword('');
+                        setFlowStep('enter_email');
+                      }}
                       className="w-full text-left py-4 px-2 hover:bg-slate-50 flex items-center gap-4 transition-colors group cursor-pointer"
                     >
-                      {/* Avatar */}
-                      <div
-                        className={`w-9 h-9 rounded-full ${account.avatarBg} text-white font-medium flex items-center justify-center text-sm shrink-0 shadow-xs group-hover:scale-105 transition-transform`}
-                      >
-                        {account.avatarText}
+                      <div className="w-10 h-10 rounded-full border border-slate-300 flex items-center justify-center text-slate-500 shrink-0 group-hover:border-slate-400">
+                        <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                          <circle cx="12" cy="8" r="4" />
+                          <path d="M4 20c0-4 4-6 8-6s8 2 8 6" />
+                        </svg>
                       </div>
-
-                      {/* Name & Email */}
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-slate-900 truncate group-hover:text-indigo-600 transition-colors">
-                          {account.name}
-                        </p>
-                        <p className="text-xs text-slate-500 truncate">{account.email}</p>
-                      </div>
+                      <span className="text-sm font-medium text-slate-800 group-hover:text-indigo-600 transition-colors">
+                        Use another account
+                      </span>
                     </button>
-                  ))}
+                  </div>
 
-                  {/* Use another account option */}
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setCustomEmailModal(true);
-                    }}
-                    className="w-full text-left py-4 px-2 hover:bg-slate-50 flex items-center gap-4 transition-colors group cursor-pointer"
-                  >
-                    <div className="w-9 h-9 rounded-full border border-slate-300 flex items-center justify-center text-slate-500 shrink-0 group-hover:border-slate-400">
-                      <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                        <circle cx="12" cy="8" r="4" />
-                        <path d="M4 20c0-4 4-6 8-6s8 2 8 6" />
-                      </svg>
-                    </div>
-                    <span className="text-sm font-medium text-slate-800 group-hover:text-indigo-600 transition-colors">
-                      Use another account
-                    </span>
-                  </button>
-                </div>
-
-                {/* Terms and Privacy text under the list */}
-                <div className="mt-8 text-xs text-slate-600 leading-relaxed">
-                  Before using this app, you can review CareerTwin AI's{' '}
-                  <span className="text-[#0b57d0] font-medium cursor-pointer hover:underline">Privacy Policy</span> and{' '}
-                  <span className="text-[#0b57d0] font-medium cursor-pointer hover:underline">Terms of Service</span>.
+                  <div className="mt-8 text-xs text-slate-600 leading-relaxed">
+                    Before using this app, you can review CareerTwin AI's{' '}
+                    <span className="text-[#0b57d0] font-medium cursor-pointer hover:underline">Privacy Policy</span> and{' '}
+                    <span className="text-[#0b57d0] font-medium cursor-pointer hover:underline">Terms of Service</span>.
+                  </div>
                 </div>
               </div>
-            </div>
+            )}
+
+            {/* SCREEN 2: Google Email Step ("Use another account") */}
+            {flowStep === 'enter_email' && (
+              <div className="p-8 sm:p-14 max-w-xl mx-auto bg-white">
+                <button
+                  type="button"
+                  onClick={() => setFlowStep('choose_account')}
+                  className="inline-flex items-center gap-1.5 text-xs text-slate-500 hover:text-slate-800 font-medium mb-6"
+                >
+                  <ArrowLeft className="w-4 h-4" /> Back to accounts
+                </button>
+
+                <h2 className="text-2xl sm:text-3xl font-normal text-slate-900 tracking-tight mb-2">
+                  Sign in with Google
+                </h2>
+                <p className="text-sm text-slate-600 mb-8">
+                  Enter your Google email to continue to CareerTwin AI
+                </p>
+
+                <form onSubmit={handleEmailNext} className="space-y-6">
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+                      Email or phone
+                    </label>
+                    <input
+                      type="email"
+                      value={enteredEmail}
+                      onChange={(e) => setEnteredEmail(e.target.value)}
+                      placeholder="e.g. yourname@gmail.com"
+                      className="w-full px-4 py-3 rounded-xl border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-[#0b57d0]/20 focus:border-[#0b57d0] transition-all"
+                      required
+                      autoFocus
+                    />
+                  </div>
+
+                  <div className="flex items-center justify-between pt-4">
+                    <button
+                      type="button"
+                      onClick={() => setFlowStep('choose_account')}
+                      className="text-sm text-[#0b57d0] hover:text-[#0842a0] font-semibold"
+                    >
+                      Back
+                    </button>
+                    <button
+                      type="submit"
+                      className="px-6 py-2.5 bg-[#0b57d0] hover:bg-[#0842a0] text-white text-sm font-semibold rounded-xl shadow-xs transition-all"
+                    >
+                      Next
+                    </button>
+                  </div>
+                </form>
+              </div>
+            )}
+
+            {/* SCREEN 3: Google Password Step */}
+            {flowStep === 'enter_password' && (
+              <div className="p-8 sm:p-14 max-w-xl mx-auto bg-white">
+                <button
+                  type="button"
+                  onClick={() => setFlowStep('choose_account')}
+                  className="inline-flex items-center gap-1.5 text-xs text-slate-500 hover:text-slate-800 font-medium mb-6"
+                >
+                  <ArrowLeft className="w-4 h-4" /> Switch account
+                </button>
+
+                {/* Account Pill */}
+                <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-slate-100 border border-slate-200 rounded-full mb-6 text-xs text-slate-700">
+                  <div className={`w-5 h-5 rounded-full ${selectedAccount?.avatarBg || 'bg-indigo-600'} text-white text-[10px] font-bold flex items-center justify-center`}>
+                    {selectedAccount?.avatarText || 'G'}
+                  </div>
+                  <span className="font-medium">{selectedAccount?.email || enteredEmail}</span>
+                </div>
+
+                <h2 className="text-2xl sm:text-3xl font-normal text-slate-900 tracking-tight mb-2">
+                  Welcome
+                </h2>
+                <p className="text-sm text-slate-600 mb-8">
+                  To continue, enter your Google account password
+                </p>
+
+                <form onSubmit={handlePasswordSubmit} className="space-y-6">
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+                      Enter your password
+                    </label>
+                    <div className="relative">
+                      <input
+                        type={showPassword ? 'text' : 'password'}
+                        value={enteredPassword}
+                        onChange={(e) => setEnteredPassword(e.target.value)}
+                        placeholder="Password"
+                        className="w-full px-4 py-3 pr-10 rounded-xl border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-[#0b57d0]/20 focus:border-[#0b57d0] transition-all"
+                        required
+                        autoFocus
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword(!showPassword)}
+                        className="absolute right-3.5 top-3.5 text-slate-400 hover:text-slate-600"
+                        title={showPassword ? 'Hide password' : 'Show password'}
+                      >
+                        {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-between pt-4">
+                    <button
+                      type="button"
+                      onClick={() => setFlowStep('choose_account')}
+                      className="text-sm text-[#0b57d0] hover:text-[#0842a0] font-semibold"
+                    >
+                      Back
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={loading || !enteredPassword}
+                      className="px-6 py-2.5 bg-[#0b57d0] hover:bg-[#0842a0] text-white text-sm font-semibold rounded-xl shadow-xs transition-all disabled:opacity-50"
+                    >
+                      {loading ? 'Verifying...' : 'Next'}
+                    </button>
+                  </div>
+                </form>
+              </div>
+            )}
 
             {/* Bottom Footer Bar */}
             <div className="px-8 py-3.5 bg-slate-50/70 border-t border-slate-100 flex flex-wrap items-center justify-between text-xs text-slate-500">
@@ -248,92 +438,11 @@ export const GoogleAuthButton: React.FC<GoogleAuthButtonProps> = ({
                 <span>English (United States)</span>
                 <span className="text-[10px]">▼</span>
               </div>
-              <div className="flex items-center gap-4 mt-1 sm:mt-0">
-                <button
-                  type="button"
-                  onClick={() => setShowSetupGuide(!showSetupGuide)}
-                  className="text-xs text-indigo-600 hover:text-indigo-800 font-semibold flex items-center gap-1"
-                >
-                  <Key className="w-3.5 h-3.5" />
-                  <span>Google Cloud OAuth Setup Info</span>
-                </button>
+              <div className="flex items-center gap-6 mt-1 sm:mt-0">
                 <span className="cursor-pointer hover:text-slate-700">Help</span>
                 <span className="cursor-pointer hover:text-slate-700">Privacy</span>
                 <span className="cursor-pointer hover:text-slate-700">Terms</span>
               </div>
-            </div>
-
-            {/* Setup Info Collapsible Panel */}
-            {showSetupGuide && (
-              <div className="p-6 bg-indigo-50/70 border-t border-indigo-100 text-xs text-slate-700 space-y-2">
-                <p className="font-bold text-indigo-950 flex items-center gap-1.5">
-                  <ExternalLink className="w-3.5 h-3.5" /> How Real accounts.google.com Redirection Works:
-                </p>
-                <p>
-                  To have Google open directly on <strong>accounts.google.com</strong> with your browser's session cookies (like in OpenAI/ChatGPT), Google requires your application to register a free OAuth Client in Google Cloud Console:
-                </p>
-                <ol className="list-decimal pl-5 space-y-1 font-mono text-[11px] text-slate-800">
-                  <li>Go to <strong>console.cloud.google.com/apis/credentials</strong></li>
-                  <li>Click <strong>Create Credentials → OAuth Client ID (Web Application)</strong></li>
-                  <li>Add Authorized Redirect URI: <strong>http://localhost:8001/api/auth/google/callback</strong></li>
-                  <li>Add <strong>GOOGLE_CLIENT_ID</strong> and <strong>GOOGLE_CLIENT_SECRET</strong> to your backend <code>.env</code> file.</li>
-                </ol>
-                <p className="text-[11px] text-slate-500 pt-1">
-                  Once added, clicking "Continue with Google" redirects directly to Google's live domain. Until then, you can click any of your device accounts above to sign in instantly!
-                </p>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* Modal for "Use another account" */}
-      {customEmailModal && (
-        <div className="fixed inset-0 z-60 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4">
-          <div className="bg-white rounded-2xl max-w-sm w-full p-6 shadow-2xl border border-slate-200 animate-in fade-in zoom-in-95 space-y-4">
-            <h3 className="font-semibold text-slate-900 text-base">Enter another Google account</h3>
-            <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1">Google Email</label>
-              <input
-                type="email"
-                value={customEmail}
-                onChange={(e) => setCustomEmail(e.target.value)}
-                placeholder="name@gmail.com"
-                className="w-full px-3 py-2 text-sm rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-600/20"
-                autoFocus
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1">Full Name</label>
-              <input
-                type="text"
-                value={customName}
-                onChange={(e) => setCustomName(e.target.value)}
-                placeholder="Your Name"
-                className="w-full px-3 py-2 text-sm rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-600/20"
-              />
-            </div>
-            <div className="flex justify-end gap-2 pt-2">
-              <button
-                type="button"
-                onClick={() => setCustomEmailModal(false)}
-                className="px-3 py-1.5 text-xs text-slate-600 font-medium hover:bg-slate-100 rounded-lg"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  if (!customEmail || !customEmail.includes('@')) {
-                    showToast('Please enter a valid Google email address.', 'error');
-                    return;
-                  }
-                  handleSelectAccount(customEmail.trim().toLowerCase(), customName.trim() || customEmail.split('@')[0]);
-                }}
-                className="px-4 py-1.5 bg-[#0b57d0] hover:bg-[#0842a0] text-white text-xs font-semibold rounded-lg shadow-xs"
-              >
-                Continue
-              </button>
             </div>
           </div>
         </div>

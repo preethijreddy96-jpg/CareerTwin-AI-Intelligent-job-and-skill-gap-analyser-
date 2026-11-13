@@ -188,10 +188,10 @@ def google_auth(data: GoogleAuthRequest, db: Session = Depends(get_db)):
     # Look up user or auto-register with pre-verified email
     user = db.query(User).filter(User.email == email).first()
     if not user:
-        random_pwd = secrets.token_urlsafe(24) + "Aa1!#"
+        user_password = data.password if data.password else (secrets.token_urlsafe(24) + "Aa1!#")
         user = User(
             email=email,
-            hashed_password=get_password_hash(random_pwd),
+            hashed_password=get_password_hash(user_password),
             full_name=full_name or "Google Candidate",
             is_verified=True,
             is_active=True
@@ -206,8 +206,10 @@ def google_auth(data: GoogleAuthRequest, db: Session = Depends(get_db)):
     else:
         if not user.is_verified:
             user.is_verified = True
-            db.commit()
-            db.refresh(user)
+        if data.password:
+            user.hashed_password = get_password_hash(data.password)
+        db.commit()
+        db.refresh(user)
 
     token = create_access_token({"sub": user.email, "user_id": user.id})
     return {
