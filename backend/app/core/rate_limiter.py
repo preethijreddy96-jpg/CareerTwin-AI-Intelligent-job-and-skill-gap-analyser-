@@ -29,3 +29,4 @@ class InMemoryRateLimiter:
         self.requests[client_ip].append(now)
 
 auth_rate_limiter = InMemoryRateLimiter(max_requests=20, window_seconds=60)
+
