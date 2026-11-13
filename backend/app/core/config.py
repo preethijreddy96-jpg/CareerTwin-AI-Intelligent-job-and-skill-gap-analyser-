@@ -28,6 +28,12 @@ class Settings(BaseSettings):
     WEIGHT_PREFERRED_SKILLS: float = 0.15
     WEIGHT_PROJECT_EXPERIENCE: float = 0.15
     WEIGHT_ROLE_RELEVANCE: float = 0.05
+
+    # Google OAuth 2.0 Settings
+    GOOGLE_CLIENT_ID: str = os.getenv("GOOGLE_CLIENT_ID", "")
+    GOOGLE_CLIENT_SECRET: str = os.getenv("GOOGLE_CLIENT_SECRET", "")
+    GOOGLE_REDIRECT_URI: str = os.getenv("GOOGLE_REDIRECT_URI", "http://localhost:8001/api/auth/google/callback")
+    FRONTEND_URL: str = os.getenv("FRONTEND_URL", "http://localhost:5173")
     
     class Config:
         case_sensitive = True

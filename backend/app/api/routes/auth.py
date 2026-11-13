@@ -1,8 +1,13 @@
 import random
 import secrets
 from datetime import datetime, timedelta
+from typing import Optional
+from urllib.parse import urlencode, quote
 from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi.responses import RedirectResponse
+import requests
 from sqlalchemy.orm import Session
+from app.core.config import settings
 from app.core.database import get_db
 from app.core.security import get_password_hash, verify_password, create_access_token
 from app.models.models import User, UserProfile
@@ -212,6 +217,108 @@ def google_auth(data: GoogleAuthRequest, db: Session = Depends(get_db)):
         "email": user.email,
         "full_name": user.full_name
     }
+
+@router.get("/google/status")
+def google_status():
+    """Checks if Google OAuth 2.0 Client ID is configured."""
+    return {
+        "configured": bool(settings.GOOGLE_CLIENT_ID and settings.GOOGLE_CLIENT_SECRET),
+        "client_id": (settings.GOOGLE_CLIENT_ID[:12] + "...") if settings.GOOGLE_CLIENT_ID else None,
+        "redirect_uri": settings.GOOGLE_REDIRECT_URI
+    }
+
+@router.get("/google/login")
+def google_oauth_login():
+    """Redirects the candidate directly to Google's official accounts.google.com authorization screen."""
+    if not settings.GOOGLE_CLIENT_ID:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Google Client ID is not configured. Please set GOOGLE_CLIENT_ID in backend or provide it to activate Google OAuth."
+        )
+
+    params = {
+        "client_id": settings.GOOGLE_CLIENT_ID,
+        "redirect_uri": settings.GOOGLE_REDIRECT_URI,
+        "response_type": "code",
+        "scope": "openid email profile",
+        "access_type": "offline",
+        "prompt": "select_account"
+    }
+    google_url = f"https://accounts.google.com/o/oauth2/v2/auth?{urlencode(params)}"
+    return RedirectResponse(google_url)
+
+@router.get("/google/callback")
+def google_oauth_callback(code: Optional[str] = None, error: Optional[str] = None, db: Session = Depends(get_db)):
+    """Receives authorization code from Google, exchanges it for user info, and creates authenticated session."""
+    if error:
+        return RedirectResponse(f"{settings.FRONTEND_URL}/login?error={quote(error)}")
+
+    if not code:
+        return RedirectResponse(f"{settings.FRONTEND_URL}/login?error=Missing+Google+authorization+code")
+
+    # Exchange authorization code for Google access token
+    token_url = "https://oauth2.googleapis.com/token"
+    token_data = {
+        "client_id": settings.GOOGLE_CLIENT_ID,
+        "client_secret": settings.GOOGLE_CLIENT_SECRET,
+        "code": code,
+        "grant_type": "authorization_code",
+        "redirect_uri": settings.GOOGLE_REDIRECT_URI
+    }
+
+    try:
+        res = requests.post(token_url, data=token_data, timeout=10)
+        res_json = res.json()
+        if "error" in res_json:
+            error_desc = res_json.get("error_description", "Google token exchange failed")
+            return RedirectResponse(f"{settings.FRONTEND_URL}/login?error={quote(error_desc)}")
+
+        access_token = res_json.get("access_token")
+
+        # Retrieve profile information from Google
+        userinfo_res = requests.get(
+            "https://www.googleapis.com/oauth2/v3/userinfo",
+            headers={"Authorization": f"Bearer {access_token}"},
+            timeout=10
+        )
+        google_profile = userinfo_res.json()
+        email = google_profile.get("email")
+        if not email:
+            return RedirectResponse(f"{settings.FRONTEND_URL}/login?error=Could+not+retrieve+email+from+Google")
+
+        email = email.strip().lower()
+        full_name = google_profile.get("name") or email.split("@")[0]
+
+        # Find or create user
+        user = db.query(User).filter(User.email == email).first()
+        if not user:
+            user = User(
+                email=email,
+                hashed_password=get_password_hash(secrets.token_urlsafe(24) + "Aa1!#"),
+                full_name=full_name,
+                is_verified=True,
+                is_active=True
+            )
+            db.add(user)
+            db.flush()
+            profile = UserProfile(user_id=user.id, target_role="Full-Stack Developer")
+            db.add(profile)
+            db.commit()
+            db.refresh(user)
+        else:
+            if not user.is_verified:
+                user.is_verified = True
+                db.commit()
+                db.refresh(user)
+
+        # Create session token
+        app_token = create_access_token({"sub": user.email, "user_id": user.id})
+        return RedirectResponse(
+            f"{settings.FRONTEND_URL}/auth/callback?token={app_token}&email={user.email}&name={quote(user.full_name)}&id={user.id}"
+        )
+
+    except Exception as e:
+        return RedirectResponse(f"{settings.FRONTEND_URL}/login?error={quote(str(e))}")
 
 @router.get("/me", response_model=UserOut)
 def read_current_user(current_user: User = Depends(get_current_user)):

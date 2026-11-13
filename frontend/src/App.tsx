@@ -19,6 +19,7 @@ import { RecommendationsPage } from './pages/RecommendationsPage';
 import { RoadmapPage } from './pages/RoadmapPage';
 import { ResumeImprovementPage } from './pages/ResumeImprovementPage';
 import { ProfilePage } from './pages/ProfilePage';
+import { AuthCallbackPage } from './pages/AuthCallbackPage';
 
 export function App() {
   return (
@@ -28,6 +29,7 @@ export function App() {
           <Routes>
             {/* Public Routes */}
             <Route path="/" element={<LandingPage />} />
+            <Route path="/auth/callback" element={<AuthCallbackPage />} />
 
             {/* Auth Layout for login & register */}
             <Route element={<AuthLayout />}>

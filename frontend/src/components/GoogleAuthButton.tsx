@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 import { authApi } from '../services/api';
-import { BrainCircuit, X } from 'lucide-react';
+import { BrainCircuit, X, Key, ExternalLink } from 'lucide-react';
 
 interface GoogleAuthButtonProps {
   label?: string;
@@ -15,7 +15,6 @@ interface GoogleAccountItem {
   email: string;
   avatarBg?: string;
   avatarText?: string;
-  avatarImg?: string;
 }
 
 export const GoogleAuthButton: React.FC<GoogleAuthButtonProps> = ({
@@ -24,6 +23,7 @@ export const GoogleAuthButton: React.FC<GoogleAuthButtonProps> = ({
 }) => {
   const [loading, setLoading] = useState(false);
   const [showChooserModal, setShowChooserModal] = useState(false);
+  const [showSetupGuide, setShowSetupGuide] = useState(false);
   const [customEmailModal, setCustomEmailModal] = useState(false);
   const [customEmail, setCustomEmail] = useState('');
   const [customName, setCustomName] = useState('');
@@ -53,6 +53,28 @@ export const GoogleAuthButton: React.FC<GoogleAuthButtonProps> = ({
       avatarText: 'V',
     },
   ];
+
+  const handleGoogleClick = async () => {
+    try {
+      setLoading(true);
+      // Check if backend has live Google OAuth client credentials configured
+      const statusRes = await fetch('http://localhost:8001/api/auth/google/status');
+      const statusData = await statusRes.json();
+
+      if (statusData.configured) {
+        // Redirect directly to live accounts.google.com
+        window.location.href = 'http://localhost:8001/api/auth/google/login';
+        return;
+      }
+    } catch (e) {
+      console.warn('Could not check Google OAuth status:', e);
+    } finally {
+      setLoading(false);
+    }
+
+    // If client ID is not yet configured, show the authentic Account Chooser
+    setShowChooserModal(true);
+  };
 
   const handleSelectAccount = async (email: string, name: string) => {
     try {
@@ -84,12 +106,12 @@ export const GoogleAuthButton: React.FC<GoogleAuthButtonProps> = ({
 
   return (
     <div className="w-full">
-      {/* Google Sign-In Trigger Button */}
+      {/* Main Google Sign-In Trigger Button */}
       <button
         type="button"
-        onClick={() => setShowChooserModal(true)}
+        onClick={handleGoogleClick}
         disabled={loading}
-        className="w-full py-2.5 px-4 bg-white hover:bg-slate-50 text-slate-700 font-medium text-sm rounded-xl border border-slate-300 shadow-xs hover:shadow flex items-center justify-center gap-3 transition-all duration-200 disabled:opacity-60"
+        className="w-full py-2.5 px-4 bg-white hover:bg-slate-50 text-slate-700 font-medium text-sm rounded-xl border border-slate-300 shadow-xs hover:shadow flex items-center justify-center gap-3 transition-all duration-200 disabled:opacity-60 cursor-pointer"
       >
         <svg className="w-4 h-4 shrink-0" viewBox="0 0 24 24">
           <path
@@ -109,7 +131,7 @@ export const GoogleAuthButton: React.FC<GoogleAuthButtonProps> = ({
             d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"
           />
         </svg>
-        <span>{loading ? 'Connecting Google...' : label}</span>
+        <span>{loading ? 'Connecting to Google...' : label}</span>
       </button>
 
       {/* Official Google Account Chooser Modal (Matches Image 2) */}
@@ -149,7 +171,7 @@ export const GoogleAuthButton: React.FC<GoogleAuthButtonProps> = ({
               </button>
             </div>
 
-            {/* Main Content Area (Two Columns Layout) */}
+            {/* Main Content Area (Two Columns Layout matching Image 2) */}
             <div className="p-8 sm:p-12 grid grid-cols-1 md:grid-cols-2 gap-10 sm:gap-14 bg-white">
               {/* Left Column: App Branding and Heading */}
               <div className="flex flex-col justify-start">
@@ -226,12 +248,41 @@ export const GoogleAuthButton: React.FC<GoogleAuthButtonProps> = ({
                 <span>English (United States)</span>
                 <span className="text-[10px]">▼</span>
               </div>
-              <div className="flex items-center gap-6 mt-1 sm:mt-0">
+              <div className="flex items-center gap-4 mt-1 sm:mt-0">
+                <button
+                  type="button"
+                  onClick={() => setShowSetupGuide(!showSetupGuide)}
+                  className="text-xs text-indigo-600 hover:text-indigo-800 font-semibold flex items-center gap-1"
+                >
+                  <Key className="w-3.5 h-3.5" />
+                  <span>Google Cloud OAuth Setup Info</span>
+                </button>
                 <span className="cursor-pointer hover:text-slate-700">Help</span>
                 <span className="cursor-pointer hover:text-slate-700">Privacy</span>
                 <span className="cursor-pointer hover:text-slate-700">Terms</span>
               </div>
             </div>
+
+            {/* Setup Info Collapsible Panel */}
+            {showSetupGuide && (
+              <div className="p-6 bg-indigo-50/70 border-t border-indigo-100 text-xs text-slate-700 space-y-2">
+                <p className="font-bold text-indigo-950 flex items-center gap-1.5">
+                  <ExternalLink className="w-3.5 h-3.5" /> How Real accounts.google.com Redirection Works:
+                </p>
+                <p>
+                  To have Google open directly on <strong>accounts.google.com</strong> with your browser's session cookies (like in OpenAI/ChatGPT), Google requires your application to register a free OAuth Client in Google Cloud Console:
+                </p>
+                <ol className="list-decimal pl-5 space-y-1 font-mono text-[11px] text-slate-800">
+                  <li>Go to <strong>console.cloud.google.com/apis/credentials</strong></li>
+                  <li>Click <strong>Create Credentials → OAuth Client ID (Web Application)</strong></li>
+                  <li>Add Authorized Redirect URI: <strong>http://localhost:8001/api/auth/google/callback</strong></li>
+                  <li>Add <strong>GOOGLE_CLIENT_ID</strong> and <strong>GOOGLE_CLIENT_SECRET</strong> to your backend <code>.env</code> file.</li>
+                </ol>
+                <p className="text-[11px] text-slate-500 pt-1">
+                  Once added, clicking "Continue with Google" redirects directly to Google's live domain. Until then, you can click any of your device accounts above to sign in instantly!
+                </p>
+              </div>
+            )}
           </div>
         </div>
       )}
