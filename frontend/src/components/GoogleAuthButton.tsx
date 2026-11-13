@@ -242,41 +242,28 @@ export const GoogleAuthButton: React.FC<GoogleAuthButtonProps> = ({
                 <div className="flex flex-col">
                   <div className="divide-y divide-slate-200">
                     {deviceAccounts.map((account) => (
-                      <div
+                      <button
                         key={account.email}
-                        className="py-3.5 px-2 hover:bg-slate-50 flex items-center justify-between transition-colors group cursor-pointer"
-                        onClick={() => handleSelectDeviceAccount(account)}
+                        type="button"
+                        onClick={() => handleOneClickSignIn(account)}
+                        className="w-full text-left py-4 px-2 hover:bg-slate-50 flex items-center gap-4 transition-colors group cursor-pointer"
+                        title={`Sign in as ${account.name} (${account.email})`}
                       >
-                        <div className="flex items-center gap-4 min-w-0">
-                          <div
-                            className={`w-10 h-10 rounded-full ${account.avatarBg} text-white font-medium flex items-center justify-center text-sm shrink-0 shadow-xs group-hover:scale-105 transition-transform`}
-                          >
-                            {account.avatarText}
-                          </div>
-                          <div className="min-w-0">
-                            <p className="text-sm font-medium text-slate-900 truncate group-hover:text-indigo-600 transition-colors">
-                              {account.name}
-                            </p>
-                            <p className="text-xs text-slate-500 truncate">{account.email}</p>
-                          </div>
-                        </div>
-
-                        {/* Quick 1-tap option */}
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleOneClickSignIn(account);
-                          }}
-                          className="text-[11px] font-semibold text-indigo-600 bg-indigo-50 hover:bg-indigo-100 px-2.5 py-1 rounded-lg shrink-0 transition-colors"
-                          title="Instant verified sign-in"
+                        <div
+                          className={`w-10 h-10 rounded-full ${account.avatarBg} text-white font-medium flex items-center justify-center text-sm shrink-0 shadow-xs group-hover:scale-105 transition-transform`}
                         >
-                          Sign In
-                        </button>
-                      </div>
+                          {account.avatarText}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium text-slate-900 truncate group-hover:text-indigo-600 transition-colors">
+                            {account.name}
+                          </p>
+                          <p className="text-xs text-slate-500 truncate">{account.email}</p>
+                        </div>
+                      </button>
                     ))}
 
-                    {/* Use another account option */}
+                    {/* Use another account option - prompts for Email & Password */}
                     <button
                       type="button"
                       onClick={() => {
