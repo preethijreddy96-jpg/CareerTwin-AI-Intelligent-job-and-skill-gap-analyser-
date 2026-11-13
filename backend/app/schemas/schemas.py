@@ -1,13 +1,66 @@
 from datetime import datetime
 from typing import List, Optional, Dict, Any
 import re
+import socket
 from pydantic import BaseModel, EmailStr, Field, field_validator
+
+DISPOSABLE_DOMAINS = {
+    'mailinator.com', 'tempmail.com', '10minutemail.com', 'guerrillamail.com',
+    'trashmail.com', 'fakeinbox.com', 'yopmail.com', 'throwawaymail.com',
+    'temp-mail.org', 'sharklasers.com', 'getairmail.com', 'dispostable.com',
+    'fakemailgenerator.com', 'burnermail.io', 'maildrop.cc', 'crazymailing.com',
+    'mytemp.email', 'nada.ltd', 'mohmal.com', 'inboxkitten.com', 'fake.com',
+    'test.com', 'invalid.com', 'example.com'
+}
+
+WHITELISTED_DEMO_DOMAINS = {'careertwin.ai', 'localhost', 'test.careertwin.ai'}
+
+def validate_deliverable_email(email_str: str) -> str:
+    email_str = email_str.strip().lower()
+    parts = email_str.split('@')
+    if len(parts) != 2:
+        raise ValueError("Invalid email format.")
+    username, domain = parts
+    if not domain or '.' not in domain:
+        raise ValueError("Email must contain a valid domain (e.g., gmail.com).")
+
+    if domain in WHITELISTED_DEMO_DOMAINS:
+        return email_str
+
+    if domain in DISPOSABLE_DOMAINS:
+        raise ValueError(f"Disposable or temporary email provider '@{domain}' is not allowed. Please use a permanent email address.")
+
+    tld = domain.split('.')[-1]
+    if len(tld) < 2 or not tld.isalpha():
+        raise ValueError(f"Email domain has an invalid top-level domain '.{tld}'.")
+
+    # Verify domain exists and is capable of receiving mail
+    try:
+        from email_validator import validate_email as lib_validate_email, EmailNotValidError
+        lib_validate_email(email_str, check_deliverability=True)
+    except EmailNotValidError as e:
+        raise ValueError(f"The email domain '@{domain}' does not exist or cannot receive emails ({str(e)}). Please provide a real, working email address.")
+    except Exception:
+        # Fallback host resolution if DNS check fails due to local sandbox constraints
+        try:
+            socket.getaddrinfo(domain, 80)
+        except socket.gaierror:
+            raise ValueError(f"The domain '@{domain}' does not exist on the internet. Please provide a real, active email address.")
+        except Exception:
+            pass
+
+    return email_str
 
 # User & Auth
 class UserRegister(BaseModel):
     email: EmailStr
     password: str = Field(..., min_length=8)
     full_name: str = Field(..., min_length=2)
+
+    @field_validator('email')
+    @classmethod
+    def validate_email_deliverability(cls, v: str) -> str:
+        return validate_deliverable_email(str(v))
 
     @field_validator('password')
     @classmethod
@@ -21,6 +74,13 @@ class UserRegister(BaseModel):
         if not re.search(r'[!@#$%^&*()_+\-=\[\]{}|;:,.<>?~/]', v):
             raise ValueError("Password must contain at least one special character (!@#$%^&* etc.).")
         return v
+
+class GoogleAuthRequest(BaseModel):
+    credential: Optional[str] = None
+    email: Optional[EmailStr] = None
+    full_name: Optional[str] = None
+    google_id: Optional[str] = None
+
 
 class VerifyEmailRequest(BaseModel):
     email: EmailStr
@@ -75,6 +135,7 @@ class UserOut(BaseModel):
     email: str
     full_name: str
     is_active: bool
+    is_verified: bool = False
     created_at: datetime
     profile: Optional[UserProfileOut] = None
 

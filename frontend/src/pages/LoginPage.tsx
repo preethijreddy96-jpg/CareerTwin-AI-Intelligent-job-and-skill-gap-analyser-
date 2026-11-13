@@ -4,6 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 import { authApi } from '../services/api';
 import { BrainCircuit, Lock, Mail, ArrowRight, Sparkles, ShieldCheck } from 'lucide-react';
+import { GoogleAuthButton } from '../components/GoogleAuthButton';
 
 export const LoginPage: React.FC = () => {
   const [email, setEmail] = useState('');
@@ -54,6 +55,20 @@ export const LoginPage: React.FC = () => {
         </div>
         <h2 className="text-2xl font-bold text-slate-900 tracking-tight">Sign in to CareerTwin</h2>
         <p className="text-xs text-slate-500 mt-1">Verified candidate portal with explainable AI match</p>
+      </div>
+
+      {/* Google Authentication Button */}
+      <div className="mb-4">
+        <GoogleAuthButton label="Continue with Google" />
+      </div>
+
+      <div className="relative my-4">
+        <div className="absolute inset-0 flex items-center">
+          <div className="w-full border-t border-slate-200"></div>
+        </div>
+        <div className="relative flex justify-center text-xs uppercase">
+          <span className="bg-white px-3 text-slate-400 font-semibold">Or continue with verified email</span>
+        </div>
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-4">

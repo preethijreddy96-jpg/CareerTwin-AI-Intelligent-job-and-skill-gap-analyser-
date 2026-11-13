@@ -3,7 +3,8 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 import { authApi } from '../services/api';
-import { BrainCircuit, Lock, Mail, User, ArrowRight, Check, X, ShieldCheck, RefreshCw, Sparkles } from 'lucide-react';
+import { BrainCircuit, Lock, Mail, User, ArrowRight, Check, X, ShieldCheck, RefreshCw, Sparkles, AlertCircle } from 'lucide-react';
+import { GoogleAuthButton } from '../components/GoogleAuthButton';
 
 export const RegisterPage: React.FC = () => {
   const [fullName, setFullName] = useState('');
@@ -25,10 +26,20 @@ export const RegisterPage: React.FC = () => {
   const hasSpecial = /[!@#$%^&*()_+\-=\[\]{}|;:,.<>?~/]/.test(password);
   const isPasswordValid = hasMinLength && hasLetter && hasNumber && hasSpecial;
 
+  // Email validation tests
+  const emailDomain = email.includes('@') ? email.split('@')[1]?.toLowerCase() : '';
+  const isDisposable = ['mailinator.com', 'tempmail.com', '10minutemail.com', 'guerrillamail.com', 'trashmail.com', 'yopmail.com', 'fake.com', 'test.com'].includes(emailDomain);
+  const hasDotInDomain = emailDomain.includes('.') && emailDomain.split('.').pop()!.length >= 2;
+  const isEmailFormatValid = email.includes('@') && hasDotInDomain && !isDisposable;
+
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!fullName || !email || !password) {
       showToast('Please fill in all required fields.', 'error');
+      return;
+    }
+    if (!isEmailFormatValid) {
+      showToast('Please provide a valid, real email domain (e.g., gmail.com, outlook.com).', 'error');
       return;
     }
     if (!isPasswordValid) {
@@ -49,8 +60,13 @@ export const RegisterPage: React.FC = () => {
       setStep('verify');
       showToast('Verification code generated! Please confirm your email.', 'info');
     } catch (err: any) {
-      const msg = err.response?.data?.detail || 'Registration failed. Please check your information.';
-      showToast(msg, 'error');
+      let msg = err.response?.data?.detail;
+      if (Array.isArray(msg) && msg.length > 0) {
+        msg = msg[0]?.msg?.replace('Value error, ', '') || JSON.stringify(msg);
+      } else if (typeof msg === 'object' && msg?.msg) {
+        msg = msg.msg.replace('Value error, ', '');
+      }
+      showToast(msg || 'Registration failed. Please check your information.', 'error');
     } finally {
       setLoading(false);
     }
@@ -115,6 +131,23 @@ export const RegisterPage: React.FC = () => {
         </p>
       </div>
 
+      {step === 'register' && (
+        <>
+          <div className="mb-4">
+            <GoogleAuthButton label="Sign up with Google" />
+          </div>
+
+          <div className="relative my-4">
+            <div className="absolute inset-0 flex items-center">
+              <div className="w-full border-t border-slate-200"></div>
+            </div>
+            <div className="relative flex justify-center text-xs uppercase">
+              <span className="bg-white px-3 text-slate-400 font-semibold">Or register with active email</span>
+            </div>
+          </div>
+        </>
+      )}
+
       {step === 'register' ? (
         <form onSubmit={handleRegister} className="space-y-4">
           <div>
@@ -136,7 +169,7 @@ export const RegisterPage: React.FC = () => {
 
           <div>
             <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
-              Email Address (Verified Email Only)
+              Email Address (Real & Deliverable Email Only)
             </label>
             <div className="relative">
               <Mail className="w-4 h-4 text-slate-400 absolute left-3.5 top-3.5" />
@@ -144,11 +177,30 @@ export const RegisterPage: React.FC = () => {
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="you@example.com"
+                placeholder="you@gmail.com"
                 className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-600/20 focus:border-indigo-600 transition-all"
                 required
               />
             </div>
+
+            {/* Live Email Deliverability Hint */}
+            {email.length > 0 && (
+              <div className="mt-1 text-[11px] flex items-center gap-1.5">
+                {isDisposable ? (
+                  <span className="text-rose-600 font-medium flex items-center gap-1">
+                    <AlertCircle className="w-3.5 h-3.5 shrink-0" /> Disposable/temporary emails are not accepted.
+                  </span>
+                ) : isEmailFormatValid ? (
+                  <span className="text-emerald-600 font-medium flex items-center gap-1">
+                    <Check className="w-3.5 h-3.5 shrink-0" /> Valid domain format (@{emailDomain})
+                  </span>
+                ) : (
+                  <span className="text-amber-600 font-medium flex items-center gap-1">
+                    <AlertCircle className="w-3.5 h-3.5 shrink-0" /> Please provide a valid, active email domain (e.g. @gmail.com)
+                  </span>
+                )}
+              </div>
+            )}
           </div>
 
           <div>
