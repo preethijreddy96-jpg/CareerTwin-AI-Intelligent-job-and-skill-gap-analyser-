@@ -58,6 +58,14 @@ class UserRegister(BaseModel):
     password: str = Field(..., min_length=8)
     full_name: str = Field(..., min_length=2)
 
+    @field_validator('full_name')
+    @classmethod
+    def sanitize_full_name(cls, v: str) -> str:
+        clean = re.sub(r'<[^>]*>', '', str(v)).strip()
+        if len(clean) < 2:
+            raise ValueError("Full name must be at least 2 characters long.")
+        return clean
+
     @field_validator('email')
     @classmethod
     def validate_email_deliverability(cls, v: str) -> str:

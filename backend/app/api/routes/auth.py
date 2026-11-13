@@ -3,13 +3,14 @@ import secrets
 from datetime import datetime, timedelta
 from typing import Optional
 from urllib.parse import urlencode, quote
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Request
 from fastapi.responses import RedirectResponse
 import requests
 from sqlalchemy.orm import Session
 from app.core.config import settings
 from app.core.database import get_db
 from app.core.security import get_password_hash, verify_password, create_access_token
+from app.core.rate_limiter import auth_rate_limiter
 from app.models.models import User, UserProfile
 from app.schemas.schemas import (
     UserRegister, UserLogin, Token, UserOut,
@@ -21,7 +22,8 @@ from app.api.deps import get_current_user
 router = APIRouter(prefix="/auth", tags=["Authentication"])
 
 @router.post("/register", response_model=RegistrationResponse, status_code=status.HTTP_201_CREATED)
-def register_user(user_in: UserRegister, db: Session = Depends(get_db)):
+def register_user(user_in: UserRegister, request: Request, db: Session = Depends(get_db)):
+    auth_rate_limiter.check_rate_limit(request, identifier=f"reg_{user_in.email.lower()}")
     # Check duplicate email
     existing = db.query(User).filter(User.email == user_in.email.lower()).first()
     if existing:
@@ -58,7 +60,8 @@ def register_user(user_in: UserRegister, db: Session = Depends(get_db)):
     }
 
 @router.post("/verify-email", response_model=Token)
-def verify_email(data: VerifyEmailRequest, db: Session = Depends(get_db)):
+def verify_email(data: VerifyEmailRequest, request: Request, db: Session = Depends(get_db)):
+    auth_rate_limiter.check_rate_limit(request, identifier=f"verify_{data.email.lower()}")
     user = db.query(User).filter(User.email == data.email.lower()).first()
     if not user:
         raise HTTPException(status_code=404, detail="User account not found.")
@@ -114,7 +117,8 @@ def resend_verification_code(data: ResendCodeRequest, db: Session = Depends(get_
     }
 
 @router.post("/login", response_model=Token)
-def login_user(user_in: UserLogin, db: Session = Depends(get_db)):
+def login_user(user_in: UserLogin, request: Request, db: Session = Depends(get_db)):
+    auth_rate_limiter.check_rate_limit(request, identifier=f"login_{user_in.email.lower()}")
     user = db.query(User).filter(User.email == user_in.email.lower()).first()
     if not user or not verify_password(user_in.password, user.hashed_password):
         raise HTTPException(
