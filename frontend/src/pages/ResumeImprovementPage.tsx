@@ -82,7 +82,7 @@ export const ResumeImprovementPage: React.FC = () => {
   };
 
   return (
-    <div>
+    <div className="min-h-screen bg-gradient-to-b from-slate-50 via-indigo-50/20 to-slate-50/60 pb-16">
       <Navbar
         title="AI Resume Improvement & ATS Optimizer"
         subtitle="Truthful bullet-point rewrites, quantifiable metrics injection, and keyword density calibration"
@@ -90,7 +90,7 @@ export const ResumeImprovementPage: React.FC = () => {
 
       <div className="p-8 max-w-7xl mx-auto space-y-8">
         {/* Strict Truthfulness Policy Header Banner */}
-        <div className="p-4 rounded-2xl bg-amber-50/80 border border-amber-200 text-amber-900 text-xs flex items-start gap-3">
+        <div className="p-4 rounded-2xl bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 text-amber-900 text-xs flex items-start gap-3 shadow-xs">
           <ShieldCheck className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
           <div>
             <span className="font-bold block text-amber-950">Strict Truthfulness Policy:</span>
@@ -100,7 +100,9 @@ export const ResumeImprovementPage: React.FC = () => {
         </div>
 
         {/* Input Configuration Card */}
-        <div className="p-6 rounded-2xl bg-white border border-slate-200/80 shadow-xs grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
+        <div className="p-6 rounded-2xl bg-white border border-slate-200/90 shadow-sm grid grid-cols-1 md:grid-cols-3 gap-4 items-end relative overflow-hidden">
+          <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-indigo-500 via-pink-500 to-amber-500"></div>
+
           <div>
             <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
               Active Resume
@@ -108,10 +110,10 @@ export const ResumeImprovementPage: React.FC = () => {
             <select
               value={activeResumeId || ''}
               onChange={(e) => setActiveResumeId(Number(e.target.value))}
-              className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 bg-white"
+              className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
             >
               {resumes.map((r) => (
-                <option key={r.id} value={r.id}>{r.filename}</option>
+                <option key={r.id} value={r.id}>📄 {r.filename}</option>
               ))}
               {!resumes.length && <option value="">No resumes found</option>}
             </select>
@@ -125,7 +127,7 @@ export const ResumeImprovementPage: React.FC = () => {
               type="text"
               value={targetRole}
               onChange={(e) => setTargetRole(e.target.value)}
-              className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200"
+              className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
               placeholder="e.g. Python Developer"
             />
           </div>
@@ -134,9 +136,9 @@ export const ResumeImprovementPage: React.FC = () => {
             <button
               onClick={handleRunImprovement}
               disabled={loading}
-              className="w-full py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs shadow-md shadow-indigo-100 flex items-center justify-center gap-2 transition-all disabled:opacity-50"
+              className="w-full py-2.5 rounded-xl bg-gradient-to-r from-indigo-600 to-pink-600 hover:from-indigo-700 hover:to-pink-700 text-white font-bold text-xs shadow-md shadow-indigo-500/20 flex items-center justify-center gap-2 transition-all disabled:opacity-50 hover:scale-[1.02]"
             >
-              <Sparkles className="w-4 h-4" />
+              <Sparkles className="w-4 h-4 text-amber-300" />
               <span>{loading ? 'Analyzing Content...' : 'Run Resume Evaluation'}</span>
             </button>
           </div>
@@ -147,142 +149,80 @@ export const ResumeImprovementPage: React.FC = () => {
           <div className="space-y-8 animate-fadeIn">
             {/* Score Cards */}
             <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
-              <div className="p-5 rounded-2xl bg-white border border-slate-200 shadow-xs">
-                <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Overall Resume Score</span>
-                <span className="text-3xl font-extrabold text-indigo-600 block mt-1">{data.overall_score}%</span>
+              <div className="p-5 rounded-2xl bg-gradient-to-br from-indigo-50 via-white to-purple-50/40 border border-indigo-200 shadow-sm">
+                <span className="text-xs font-bold text-indigo-700 uppercase tracking-wider">Overall Resume Score</span>
+                <span className="text-3xl font-extrabold text-indigo-700 block mt-1">{data.overall_score}%</span>
                 <span className="text-[10px] text-slate-500 mt-1 block">Weighted benchmark</span>
               </div>
-              <div className="p-5 rounded-2xl bg-white border border-slate-200 shadow-xs">
-                <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">ATS Readiness</span>
-                <span className="text-3xl font-extrabold text-emerald-600 block mt-1">{data.ats_formatting_score}%</span>
+              <div className="p-5 rounded-2xl bg-gradient-to-br from-emerald-50 via-white to-teal-50/40 border border-emerald-200 shadow-sm">
+                <span className="text-xs font-bold text-emerald-700 uppercase tracking-wider">ATS Readiness</span>
+                <span className="text-3xl font-extrabold text-emerald-700 block mt-1">{data.ats_formatting_score}%</span>
                 <span className="text-[10px] text-slate-500 mt-1 block">Machine readability</span>
               </div>
-              <div className="p-5 rounded-2xl bg-white border border-slate-200 shadow-xs">
-                <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Active Action Verbs</span>
-                <span className="text-3xl font-extrabold text-blue-600 block mt-1">{data.action_verb_score}%</span>
+              <div className="p-5 rounded-2xl bg-gradient-to-br from-sky-50 via-white to-blue-50/40 border border-sky-200 shadow-sm">
+                <span className="text-xs font-bold text-sky-700 uppercase tracking-wider">Active Action Verbs</span>
+                <span className="text-3xl font-extrabold text-sky-700 block mt-1">{data.action_verb_score}%</span>
                 <span className="text-[10px] text-slate-500 mt-1 block">Impactful leadership voice</span>
               </div>
-              <div className="p-5 rounded-2xl bg-white border border-slate-200 shadow-xs">
-                <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Quantifiable Metrics</span>
-                <span className="text-3xl font-extrabold text-amber-600 block mt-1">{data.quantifiable_metrics_score}%</span>
+              <div className="p-5 rounded-2xl bg-gradient-to-br from-amber-50 via-white to-orange-50/40 border border-amber-200 shadow-sm">
+                <span className="text-xs font-bold text-amber-700 uppercase tracking-wider">Quantifiable Metrics</span>
+                <span className="text-3xl font-extrabold text-amber-700 block mt-1">{data.quantifiable_metrics_score}%</span>
                 <span className="text-[10px] text-slate-500 mt-1 block">Numeric performance data</span>
               </div>
             </div>
 
             {/* Weak Bullets Detection & Truthful Rewrites */}
-            <div className="bg-white rounded-2xl border border-slate-200 shadow-xs p-6 space-y-4">
+            <div className="bg-white rounded-2xl border border-slate-200/90 shadow-sm p-6 space-y-4 relative overflow-hidden">
+              <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-pink-500 to-indigo-500"></div>
+
               <div className="flex items-center justify-between pb-3 border-b border-slate-100">
                 <div>
                   <h3 className="text-base font-bold text-slate-800">Bullet-Point Critiques & Active Voice Rewrites</h3>
-                  <p className="text-xs text-slate-400">Replaces passive phrasing with active verbs and impact metrics</p>
+                  <p className="text-xs text-slate-400 mt-0.5">Replaces passive phrasing with active verbs and impact metrics</p>
                 </div>
-                <span className="text-xs font-bold px-2.5 py-1 rounded-full bg-rose-50 text-rose-700 border border-rose-200">
+                <span className="text-xs font-bold px-2.5 py-1 rounded-full bg-rose-100 text-rose-800 border border-rose-200">
                   {data.weak_bullet_points.length} Bullets Analyzed
                 </span>
               </div>
 
               <div className="space-y-4">
                 {data.weak_bullet_points.map((bullet, idx) => (
-                  <div key={idx} className="p-4 rounded-xl bg-slate-50 border border-slate-100 space-y-3">
+                  <div key={idx} className="p-4 rounded-xl bg-slate-50/70 border border-slate-100 space-y-3">
                     <div>
                       <span className="text-[10px] font-bold uppercase text-slate-400 block mb-1">Original Bullet:</span>
                       <p className="text-xs text-slate-600 italic">"{bullet.original_text}"</p>
                     </div>
 
-                    <div className="text-xs text-rose-700 bg-rose-50/70 p-2.5 rounded-lg border border-rose-100">
-                      <span className="font-bold">Critique: </span>
+                    <div className="text-xs text-rose-800 bg-rose-50 p-3 rounded-lg border border-rose-200">
+                      <span className="font-bold text-rose-900">Critique: </span>
                       {bullet.critique}
                     </div>
 
-                    <div className="text-xs text-emerald-900 bg-emerald-50 p-3 rounded-lg border border-emerald-200 flex items-start justify-between gap-3">
+                    <div className="text-xs text-emerald-950 bg-emerald-50 p-3.5 rounded-lg border border-emerald-200 flex items-start justify-between gap-3 shadow-xs">
                       <div>
-                        <span className="font-bold text-emerald-800 block mb-1">Recommended Active Rewrite:</span>
-                        <p className="leading-relaxed">{bullet.improved_version}</p>
+                        <span className="font-bold text-emerald-900 block mb-1">Recommended Active Rewrite:</span>
+                        <p className="leading-relaxed font-medium">{bullet.improved_version}</p>
                       </div>
                       <button
                         type="button"
-                        onClick={() => copyToClipboard(bullet.improved_version, `bullet_${idx}`)}
-                        className="p-1.5 rounded-md hover:bg-emerald-100 text-emerald-700 transition-colors shrink-0"
-                        title="Copy rewrite"
+                        onClick={() => copyToClipboard(bullet.improved_version, `bullet-${idx}`)}
+                        className="px-2.5 py-1 rounded-md bg-white border border-emerald-200 hover:bg-emerald-100 text-emerald-800 font-bold text-[11px] flex items-center gap-1 shrink-0 transition-colors"
                       >
-                        {copiedKey === `bullet_${idx}` ? <Check className="w-4 h-4 text-emerald-600" /> : <Copy className="w-4 h-4" />}
+                        {copiedKey === `bullet-${idx}` ? (
+                          <>
+                            <Check className="w-3.5 h-3.5 text-emerald-600" />
+                            <span>Copied</span>
+                          </>
+                        ) : (
+                          <>
+                            <Copy className="w-3.5 h-3.5" />
+                            <span>Copy</span>
+                          </>
+                        )}
                       </button>
                     </div>
                   </div>
                 ))}
-              </div>
-            </div>
-
-            {/* Keyword Alignment Comparison */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {/* Matched Keywords */}
-              <div className="p-6 rounded-2xl bg-white border border-slate-200 shadow-xs space-y-3">
-                <span className="text-xs font-bold text-slate-800 uppercase tracking-wider block flex items-center gap-1.5">
-                  <CheckCircle2 className="w-4 h-4 text-emerald-500" /> Matched Keywords Found in Resume ({data.matched_keywords.length})
-                </span>
-                <div className="flex flex-wrap gap-1.5">
-                  {data.matched_keywords.map((kw) => (
-                    <span key={kw} className="px-2.5 py-1 rounded text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
-                      {kw}
-                    </span>
-                  ))}
-                </div>
-              </div>
-
-              {/* Missing Critical Keywords */}
-              <div className="p-6 rounded-2xl bg-white border border-slate-200 shadow-xs space-y-3">
-                <span className="text-xs font-bold text-slate-800 uppercase tracking-wider block flex items-center gap-1.5">
-                  <AlertCircle className="w-4 h-4 text-rose-500" /> Missing Critical Industry Keywords
-                </span>
-                <div className="flex flex-wrap gap-1.5">
-                  {data.missing_critical_keywords.map((kw) => (
-                    <span key={kw} className="px-2.5 py-1 rounded text-xs font-semibold bg-rose-50 text-rose-700 border border-rose-200">
-                      + {kw}
-                    </span>
-                  ))}
-                  {!data.missing_critical_keywords.length && (
-                    <span className="text-xs text-emerald-600 font-semibold">No critical technical keywords missing!</span>
-                  )}
-                </div>
-              </div>
-            </div>
-
-            {/* Recommended Professional Summary & Skills Formatting */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="p-6 rounded-2xl bg-white border border-slate-200 shadow-xs space-y-3">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold text-slate-800 uppercase tracking-wider">
-                    Targeted Professional Summary
-                  </span>
-                  <button
-                    onClick={() => copyToClipboard(data.summary_suggestions, 'summary')}
-                    className="text-xs font-semibold text-indigo-600 hover:text-indigo-800 flex items-center gap-1"
-                  >
-                    {copiedKey === 'summary' ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
-                    <span>Copy</span>
-                  </button>
-                </div>
-                <p className="text-xs text-slate-600 leading-relaxed bg-slate-50 p-3.5 rounded-xl border border-slate-100">
-                  {data.summary_suggestions}
-                </p>
-              </div>
-
-              <div className="p-6 rounded-2xl bg-white border border-slate-200 shadow-xs space-y-3">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold text-slate-800 uppercase tracking-wider">
-                    Categorized Skills Section Format
-                  </span>
-                  <button
-                    onClick={() => copyToClipboard(data.technical_skills_formatting_suggestion, 'skills_fmt')}
-                    className="text-xs font-semibold text-indigo-600 hover:text-indigo-800 flex items-center gap-1"
-                  >
-                    {copiedKey === 'skills_fmt' ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
-                    <span>Copy</span>
-                  </button>
-                </div>
-                <pre className="text-xs text-slate-700 font-mono whitespace-pre-wrap bg-slate-50 p-3.5 rounded-xl border border-slate-100">
-                  {data.technical_skills_formatting_suggestion}
-                </pre>
               </div>
             </div>
           </div>
@@ -291,4 +231,3 @@ export const ResumeImprovementPage: React.FC = () => {
     </div>
   );
 };
-
