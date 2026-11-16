@@ -108,6 +108,12 @@ class RegistrationResponse(BaseModel):
 class UserLogin(BaseModel):
     email: EmailStr
     password: str
+    code: Optional[str] = None
+
+    @field_validator('email')
+    @classmethod
+    def validate_email_deliverability(cls, v: str) -> str:
+        return validate_deliverable_email(str(v))
 
 class Token(BaseModel):
     access_token: str
@@ -115,6 +121,9 @@ class Token(BaseModel):
     user_id: int
     email: str
     full_name: str
+    requires_2fa: bool = False
+    dev_verification_code: Optional[str] = None
+    message: Optional[str] = None
 
 class UserProfileUpdate(BaseModel):
     current_title: Optional[str] = None

@@ -142,13 +142,83 @@ def login_user(user_in: UserLogin, request: Request, db: Session = Depends(get_d
             detail="Your email is not verified. Please verify your email with your 6-digit confirmation code before logging in."
         )
 
+    # If code was submitted in login request, verify it
+    if user_in.code:
+        if not user.verification_code or user.verification_code != user_in.code.strip():
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Invalid or expired 6-digit login security code. Please try again."
+            )
+        user.verification_code = None
+        db.commit()
+
+        token = create_access_token({"sub": user.email, "user_id": user.id})
+        return {
+            "access_token": token,
+            "token_type": "bearer",
+            "user_id": user.id,
+            "email": user.email,
+            "full_name": user.full_name,
+            "requires_2fa": False,
+            "message": "Security code verified."
+        }
+
+    # For demo candidate, bypass 2FA for instant demonstration
+    if user.email == "demo.developer@careertwin.ai":
+        token = create_access_token({"sub": user.email, "user_id": user.id})
+        return {
+            "access_token": token,
+            "token_type": "bearer",
+            "user_id": user.id,
+            "email": user.email,
+            "full_name": user.full_name,
+            "requires_2fa": False
+        }
+
+    # Generate 6-digit login security verification code
+    code = f"{random.randint(100000, 999999)}"
+    user.verification_code = code
+    user.verification_code_expires = datetime.utcnow() + timedelta(minutes=15)
+    db.commit()
+
     token = create_access_token({"sub": user.email, "user_id": user.id})
     return {
         "access_token": token,
         "token_type": "bearer",
         "user_id": user.id,
         "email": user.email,
-        "full_name": user.full_name
+        "full_name": user.full_name,
+        "requires_2fa": True,
+        "dev_verification_code": code,
+        "message": f"A 6-digit login security code has been sent to {user.email}."
+    }
+
+@router.post("/verify-login-code", response_model=Token)
+def verify_login_code(data: VerifyEmailRequest, request: Request, db: Session = Depends(get_db)):
+    auth_rate_limiter.check_rate_limit(request, identifier=f"verify_login_{data.email.lower()}")
+    user = db.query(User).filter(User.email == data.email.lower()).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User account not found.")
+
+    if not user.verification_code or user.verification_code != data.code.strip():
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid or expired 6-digit security code. Please check and try again."
+        )
+
+    user.verification_code = None
+    user.is_verified = True
+    db.commit()
+
+    token = create_access_token({"sub": user.email, "user_id": user.id})
+    return {
+        "access_token": token,
+        "token_type": "bearer",
+        "user_id": user.id,
+        "email": user.email,
+        "full_name": user.full_name,
+        "requires_2fa": False,
+        "message": "Login security verified successfully."
     }
 
 @router.post("/google", response_model=Token)
