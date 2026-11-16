@@ -289,8 +289,9 @@ def seed_database(db: Session):
         )
         db.add(profile)
         db.commit()
-    elif not demo_user.is_verified:
+    else:
         demo_user.is_verified = True
+        demo_user.is_active = True
         demo_user.hashed_password = get_password_hash("DemoCareer2026!#")
         db.commit()
 
