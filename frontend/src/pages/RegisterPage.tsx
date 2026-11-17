@@ -80,9 +80,9 @@ export const RegisterPage: React.FC = () => {
       } else if (typeof msg === 'object' && msg?.msg) {
         msg = msg.msg.replace('Value error, ', '');
       } else if (!err.response && err.message) {
-        msg = `Network error: ${err.message}. Please ensure the server is running.`;
+        msg = `Network error: ${err.message}. Please refresh the page (Ctrl+F5) and ensure backend is running.`;
       }
-      showToast(msg || 'Registration failed. Please check your information.', 'error');
+      showToast(msg || 'Registration failed. Please check your network connection and reload the page.', 'error');
     } finally {
       setLoading(false);
     }
@@ -266,7 +266,7 @@ export const RegisterPage: React.FC = () => {
             disabled={loading || !isPasswordValid}
             className="w-full py-3 px-4 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-sm shadow-md shadow-indigo-100 flex items-center justify-center gap-2 transition-all disabled:opacity-40"
           >
-            {loading ? 'Creating Account...' : 'Continue to Verification'}
+            {loading ? 'Creating Account...' : 'Create Account'}
             {!loading && <ArrowRight className="w-4 h-4" />}
           </button>
         </form>
