@@ -29,13 +29,6 @@ def register_user(user_in: UserRegister, request: Request, db: Session = Depends
     auth_rate_limiter.check_rate_limit(request, identifier=f"reg_{user_in.email.lower()}")
     clean_email = user_in.email.strip().lower()
 
-    # Prevent overwriting official demo candidate
-    if clean_email == "demo.developer@careertwin.ai":
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="The demo candidate account is pre-registered. Please sign in directly."
-        )
-
     # Check duplicate email
     existing = db.query(User).filter(func.lower(User.email) == clean_email).first()
     if existing:

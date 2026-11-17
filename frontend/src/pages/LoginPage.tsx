@@ -77,7 +77,9 @@ export const LoginPage: React.FC = () => {
         navigate('/dashboard');
       }
     } catch (err: any) {
-      let msg = err.response?.data?.detail;
+      let msg = typeof err.response?.data === 'string'
+        ? err.response.data
+        : (err.response?.data?.detail || err.response?.data?.message);
       if (Array.isArray(msg) && msg.length > 0) {
         msg = msg[0]?.msg?.replace('Value error, ', '') || JSON.stringify(msg);
       } else if (typeof msg === 'object' && msg?.msg) {

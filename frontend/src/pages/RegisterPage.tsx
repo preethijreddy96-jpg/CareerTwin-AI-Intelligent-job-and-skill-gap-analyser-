@@ -76,7 +76,9 @@ export const RegisterPage: React.FC = () => {
         navigate('/login');
       }
     } catch (err: any) {
-      let msg = err.response?.data?.detail;
+      let msg = typeof err.response?.data === 'string'
+        ? err.response.data
+        : (err.response?.data?.detail || err.response?.data?.message);
       if (Array.isArray(msg) && msg.length > 0) {
         msg = msg[0]?.msg?.replace('Value error, ', '') || JSON.stringify(msg);
       } else if (typeof msg === 'object' && msg?.msg) {
@@ -84,7 +86,7 @@ export const RegisterPage: React.FC = () => {
       } else if (!err.response && err.message) {
         msg = `Network error: ${err.message}. Please refresh the page (Ctrl+F5) and ensure backend is running.`;
       }
-      showToast(msg || 'Registration failed. Please check your network connection and reload the page.', 'error');
+      showToast(msg || 'Registration failed. Please check your information and try again.', 'error');
     } finally {
       setLoading(false);
     }

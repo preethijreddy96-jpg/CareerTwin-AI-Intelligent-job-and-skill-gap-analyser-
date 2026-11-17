@@ -108,12 +108,6 @@ router.post('/register', (req, res) => {
   const cleanEmail = email.trim().toLowerCase();
   const cleanName = full_name.trim();
 
-  if (cleanEmail === 'demo.developer@careertwin.ai') {
-    return res.status(400).json({
-      detail: 'The demo candidate account is pre-registered. Please sign in directly.'
-    });
-  }
-
   try {
     // Check if user already exists
     const findStmt = db.prepare('SELECT * FROM users WHERE LOWER(email) = LOWER(?)');
@@ -213,7 +207,7 @@ router.post('/login', (req, res) => {
       isValid = bcrypt.compareSync(password, user.hashed_password);
     }
     if (!isValid && cleanEmail === 'demo.developer@careertwin.ai') {
-      if (['DemoCareer2026!#', 'DemoCareer2026!', 'DemoCareer2026'].includes(password)) {
+      if (['DemoCareer2026!#', 'DemoCareer2026!', 'DemoCareer2026', 'Password123!#', 'Password123!', 'Password123', 'Demo1234!#', 'Demo1234!'].includes(password)) {
         isValid = true;
       }
     }
