@@ -275,10 +275,10 @@ def google_auth(data: GoogleAuthRequest, db: Session = Depends(get_db)):
 
     if data.password:
         pwd = data.password.strip()
-        if len(pwd) < 8 or not re.search(r'[A-Za-z]', pwd) or not re.search(r'\d', pwd) or not re.search(r'[!@#$%^&*()_+\-=\[\]{}|;:,.<>?~/]', pwd):
+        if len(pwd) < 6:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Password must be at least 8 characters long and contain letters/words, numbers, and symbols (!@#$%^&*)."
+                detail="Password must be at least 6 characters long."
             )
 
     # Look up user or auto-register with pre-verified email

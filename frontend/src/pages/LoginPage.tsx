@@ -30,15 +30,9 @@ export const LoginPage: React.FC = () => {
   const { showToast } = useToast();
   const navigate = useNavigate();
 
-  // Email format validation
+  // Medium security email format validation
   const cleanEmail = email.trim().toLowerCase();
-  const emailDomain = cleanEmail.includes('@') ? cleanEmail.split('@')[1] : '';
-  const isDisposable = [
-    'mailinator.com', 'tempmail.com', '10minutemail.com', 'guerrillamail.com',
-    'trashmail.com', 'yopmail.com', 'fake.com', 'invalid.com'
-  ].includes(emailDomain);
-  const hasDotInDomain = emailDomain.includes('.') && emailDomain.split('.').pop()!.length >= 2;
-  const isEmailFormatValid = cleanEmail.includes('@') && hasDotInDomain && !isDisposable;
+  const isEmailFormatValid = cleanEmail.includes('@') && cleanEmail.includes('.');
 
   const handleFillDemo = () => {
     setEmail('demo.developer@careertwin.ai');
@@ -54,7 +48,7 @@ export const LoginPage: React.FC = () => {
     }
 
     if (!isEmailFormatValid) {
-      showToast('Please provide a valid, active email address with an existing domain.', 'error');
+      showToast('Please provide a valid email address (e.g. you@gmail.com).', 'error');
       return;
     }
 

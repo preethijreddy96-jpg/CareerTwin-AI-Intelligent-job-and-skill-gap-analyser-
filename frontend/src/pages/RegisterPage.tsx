@@ -19,19 +19,13 @@ export const RegisterPage: React.FC = () => {
   const { showToast } = useToast();
   const navigate = useNavigate();
 
-  // Password requirement tests
-  const hasMinLength = password.length >= 8;
-  const hasLetter = /[A-Za-z]/.test(password);
-  const hasNumber = /\d/.test(password);
-  const hasSpecial = /[^A-Za-z0-9\s]/.test(password) || /[!@#$%^&*()_+\-=\[\]{}|;:,.<>?~/]/.test(password);
-  const isPasswordValid = hasMinLength && hasLetter && hasNumber && hasSpecial;
+  // Medium security password requirements (minimum 6 characters)
+  const isPasswordValid = password.length >= 6;
 
-  // Email validation tests
+  // Medium security email validation
   const cleanEmail = email.trim().toLowerCase();
   const emailDomain = cleanEmail.includes('@') ? cleanEmail.split('@')[1] : '';
-  const isDisposable = ['mailinator.com', 'tempmail.com', '10minutemail.com', 'guerrillamail.com', 'trashmail.com', 'yopmail.com', 'fake.com'].includes(emailDomain);
-  const hasDotInDomain = emailDomain.includes('.') && emailDomain.split('.').pop()!.length >= 2;
-  const isEmailFormatValid = cleanEmail.includes('@') && hasDotInDomain && !isDisposable;
+  const isEmailFormatValid = cleanEmail.includes('@') && cleanEmail.includes('.') && cleanEmail.split('.').pop()!.length >= 2;
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -41,11 +35,11 @@ export const RegisterPage: React.FC = () => {
       return;
     }
     if (!isEmailFormatValid) {
-      showToast('Please provide a valid, real email domain (e.g., gmail.com, outlook.com).', 'error');
+      showToast('Please provide a valid email address (e.g. you@gmail.com).', 'error');
       return;
     }
     if (!isPasswordValid) {
-      showToast('Please satisfy all password complexity requirements.', 'error');
+      showToast('Password must be at least 6 characters long.', 'error');
       return;
     }
 
@@ -203,20 +197,16 @@ export const RegisterPage: React.FC = () => {
               />
             </div>
 
-            {/* Live Email Deliverability Hint */}
+            {/* Live Email Format Hint */}
             {email.length > 0 && (
               <div className="mt-1 text-[11px] flex items-center gap-1.5">
-                {isDisposable ? (
-                  <span className="text-rose-600 font-medium flex items-center gap-1">
-                    <AlertCircle className="w-3.5 h-3.5 shrink-0" /> Disposable/temporary emails are not accepted.
-                  </span>
-                ) : isEmailFormatValid ? (
+                {isEmailFormatValid ? (
                   <span className="text-emerald-600 font-medium flex items-center gap-1">
-                    <Check className="w-3.5 h-3.5 shrink-0" /> Valid domain format (@{emailDomain})
+                    <Check className="w-3.5 h-3.5 shrink-0" /> Valid email format (@{emailDomain})
                   </span>
                 ) : (
                   <span className="text-amber-600 font-medium flex items-center gap-1">
-                    <AlertCircle className="w-3.5 h-3.5 shrink-0" /> Please provide a valid, active email domain (e.g. @gmail.com)
+                    <AlertCircle className="w-3.5 h-3.5 shrink-0" /> Please enter a valid email address (e.g. name@domain.com)
                   </span>
                 )}
               </div>
@@ -239,28 +229,12 @@ export const RegisterPage: React.FC = () => {
               />
             </div>
 
-            {/* Password Policy Indicator */}
-            <div className="mt-3 p-3 rounded-xl bg-slate-50 border border-slate-100 space-y-1.5 text-[11px]">
-              <span className="font-bold text-slate-700 block text-[10px] uppercase tracking-wider">
-                Password Security Requirements:
-              </span>
-              <div className="grid grid-cols-2 gap-1.5">
-                <div className={`flex items-center gap-1.5 ${hasMinLength ? 'text-emerald-700 font-bold' : 'text-slate-400'}`}>
-                  {hasMinLength ? <Check className="w-3.5 h-3.5 text-emerald-500 shrink-0" /> : <X className="w-3.5 h-3.5 text-slate-300 shrink-0" />}
-                  <span>8+ Characters</span>
-                </div>
-                <div className={`flex items-center gap-1.5 ${hasLetter ? 'text-emerald-700 font-bold' : 'text-slate-400'}`}>
-                  {hasLetter ? <Check className="w-3.5 h-3.5 text-emerald-500 shrink-0" /> : <X className="w-3.5 h-3.5 text-slate-300 shrink-0" />}
-                  <span>Letters (A-Z, a-z)</span>
-                </div>
-                <div className={`flex items-center gap-1.5 ${hasNumber ? 'text-emerald-700 font-bold' : 'text-slate-400'}`}>
-                  {hasNumber ? <Check className="w-3.5 h-3.5 text-emerald-500 shrink-0" /> : <X className="w-3.5 h-3.5 text-slate-300 shrink-0" />}
-                  <span>Numbers (0-9)</span>
-                </div>
-                <div className={`flex items-center gap-1.5 ${hasSpecial ? 'text-emerald-700 font-bold' : 'text-slate-400'}`}>
-                  {hasSpecial ? <Check className="w-3.5 h-3.5 text-emerald-500 shrink-0" /> : <X className="w-3.5 h-3.5 text-slate-300 shrink-0" />}
-                  <span>Special (!@#$%^&*)</span>
-                </div>
+            {/* Password Policy Indicator (Medium Security) */}
+            <div className="mt-2.5 p-2.5 rounded-xl bg-slate-50 border border-slate-100 flex items-center justify-between text-xs">
+              <span className="text-slate-600 font-medium">Password requirement:</span>
+              <div className={`flex items-center gap-1.5 font-bold ${isPasswordValid ? 'text-emerald-700' : 'text-slate-400'}`}>
+                {isPasswordValid ? <Check className="w-4 h-4 text-emerald-500" /> : <X className="w-4 h-4 text-slate-300" />}
+                <span>At least 6 characters</span>
               </div>
             </div>
           </div>

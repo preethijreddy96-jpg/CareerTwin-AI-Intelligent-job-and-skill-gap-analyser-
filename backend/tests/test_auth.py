@@ -127,33 +127,19 @@ def test_google_authentication_flow(client):
     assert res_repeat.json()["user_id"] == data["user_id"]
 
 def test_google_login_password_complexity(client):
-    # Weak password "123" must be rejected (422)
+    # Weak password under 6 chars "123" must be rejected (422)
     res_weak = client.post("/api/auth/google", json={
         "email": "google.user1@gmail.com",
         "password": "123"
     })
     assert res_weak.status_code == 422
 
-    # Password without symbols must be rejected (422)
-    res_no_symbol = client.post("/api/auth/google", json={
+    # Medium security password (6+ chars) succeeds (200)
+    res_medium = client.post("/api/auth/google", json={
         "email": "google.user2@gmail.com",
         "password": "Password123"
     })
-    assert res_no_symbol.status_code == 422
-
-    # Password without numbers must be rejected (422)
-    res_no_num = client.post("/api/auth/google", json={
-        "email": "google.user3@gmail.com",
-        "password": "Password!@#"
-    })
-    assert res_no_num.status_code == 422
-
-    # Password without letters must be rejected (422)
-    res_no_let = client.post("/api/auth/google", json={
-        "email": "google.user4@gmail.com",
-        "password": "12345678!@#"
-    })
-    assert res_no_let.status_code == 422
+    assert res_medium.status_code == 200
 
     # Strong password containing letters, numbers, and symbols must succeed (200)
     res_strong = client.post("/api/auth/google", json={
