@@ -4,9 +4,12 @@
   "framework": "vite",
   "rewrites": [
     {
+      "source": "/api/auth/:match*",
+      "destination": "/api/auth/:match*"
+    },
+    {
       "source": "/(.*)",
       "destination": "/index.html"
     }
   ]
 }
-

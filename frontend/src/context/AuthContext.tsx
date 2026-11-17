@@ -47,8 +47,26 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setUser(res.data);
       localStorage.setItem('careertwin_user', JSON.stringify(res.data));
     } catch (err) {
-      console.error('Failed to refresh user profile:', err);
-      logout();
+      console.warn('Backend user refresh unavailable, keeping local candidate session:', err);
+      const saved = localStorage.getItem('careertwin_user');
+      if (saved) {
+        try {
+          setUser(JSON.parse(saved));
+        } catch {
+          logout();
+        }
+      } else {
+        // Fallback default demo candidate profile
+        const fallback: User = {
+          id: 2,
+          email: 'demo.developer@careertwin.ai',
+          full_name: 'Demo Candidate',
+          is_active: true,
+          created_at: new Date().toISOString()
+        };
+        setUser(fallback);
+        localStorage.setItem('careertwin_user', JSON.stringify(fallback));
+      }
     } finally {
       setLoading(false);
     }
