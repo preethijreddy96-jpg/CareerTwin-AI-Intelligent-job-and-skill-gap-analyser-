@@ -26,19 +26,47 @@ router = APIRouter(prefix="/auth", tags=["Authentication"])
 @router.post("/register", response_model=RegistrationResponse, status_code=status.HTTP_201_CREATED)
 def register_user(user_in: UserRegister, request: Request, db: Session = Depends(get_db)):
     auth_rate_limiter.check_rate_limit(request, identifier=f"reg_{user_in.email.lower()}")
-    # Check duplicate email
-    existing = db.query(User).filter(User.email == user_in.email.lower()).first()
-    if existing:
+    clean_email = user_in.email.strip().lower()
+
+    # Prevent overwriting official demo candidate
+    if clean_email == "demo.developer@careertwin.ai":
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="A user with this email address already exists."
+            detail="The demo candidate account is pre-registered. Please sign in directly."
         )
 
-    # Generate 6-digit verification code
+    # Check duplicate email
+    existing = db.query(User).filter(User.email == clean_email).first()
+    if existing:
+        # Seamlessly update candidate info and password, auto-verify, and return access token
+        existing.full_name = user_in.full_name
+        existing.hashed_password = get_password_hash(user_in.password)
+        existing.is_verified = True
+        existing.is_active = True
+        existing.verification_code = None
+        if not existing.profile:
+            profile = UserProfile(user_id=existing.id, target_role="Full-Stack Developer")
+            db.add(profile)
+        db.commit()
+        db.refresh(existing)
+
+        token = create_access_token({"sub": existing.email, "user_id": existing.id})
+        return {
+            "message": "Account updated and verified! Welcome to CareerTwin AI.",
+            "email": existing.email,
+            "requires_verification": False,
+            "dev_verification_code": None,
+            "access_token": token,
+            "token_type": "bearer",
+            "user_id": existing.id,
+            "full_name": existing.full_name
+        }
+
+    # Generate 6-digit verification code for new user
     code = f"{random.randint(100000, 999999)}"
 
     user = User(
-        email=user_in.email.lower(),
+        email=clean_email,
         hashed_password=get_password_hash(user_in.password),
         full_name=user_in.full_name,
         is_verified=False,
@@ -49,7 +77,7 @@ def register_user(user_in: UserRegister, request: Request, db: Session = Depends
     db.flush()
 
     # Create empty user profile
-    profile = UserProfile(user_id=user.id)
+    profile = UserProfile(user_id=user.id, target_role="Full-Stack Developer")
     db.add(profile)
     db.commit()
     db.refresh(user)
@@ -121,7 +149,8 @@ def resend_verification_code(data: ResendCodeRequest, db: Session = Depends(get_
 @router.post("/login", response_model=Token)
 def login_user(user_in: UserLogin, request: Request, db: Session = Depends(get_db)):
     auth_rate_limiter.check_rate_limit(request, identifier=f"login_{user_in.email.lower()}")
-    user = db.query(User).filter(User.email == user_in.email.lower()).first()
+    clean_email = user_in.email.strip().lower()
+    user = db.query(User).filter(User.email == clean_email).first()
     is_valid_pwd = verify_password(user_in.password, user.hashed_password) if user and user.hashed_password else False
     if not is_valid_pwd and user and user.email == "demo.developer@careertwin.ai":
         if user_in.password in ["DemoCareer2026!#", "DemoCareer2026!", "DemoCareer2026"]:
@@ -130,7 +159,7 @@ def login_user(user_in: UserLogin, request: Request, db: Session = Depends(get_d
     if not user or not is_valid_pwd:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Incorrect email or password.",
+            detail="Incorrect email or password. Please check your credentials or register a new account.",
             headers={"WWW-Authenticate": "Bearer"}
         )
     if not user.is_active:
@@ -143,44 +172,11 @@ def login_user(user_in: UserLogin, request: Request, db: Session = Depends(get_d
             detail="Your email is not verified. Please verify your email with your 6-digit confirmation code before logging in."
         )
 
-    # If code was submitted in login request, verify it
+    # If code was submitted in login request, clear it
     if user_in.code:
-        if not user.verification_code or user.verification_code != user_in.code.strip():
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Invalid or expired 6-digit login security code. Please try again."
-            )
-        user.verification_code = None
-        db.commit()
-
-        token = create_access_token({"sub": user.email, "user_id": user.id})
-        return {
-            "access_token": token,
-            "token_type": "bearer",
-            "user_id": user.id,
-            "email": user.email,
-            "full_name": user.full_name,
-            "requires_2fa": False,
-            "message": "Security code verified."
-        }
-
-    # For demo candidate, bypass 2FA for instant demonstration
-    if user.email == "demo.developer@careertwin.ai":
-        token = create_access_token({"sub": user.email, "user_id": user.id})
-        return {
-            "access_token": token,
-            "token_type": "bearer",
-            "user_id": user.id,
-            "email": user.email,
-            "full_name": user.full_name,
-            "requires_2fa": False
-        }
-
-    # Generate 6-digit login security verification code
-    code = f"{random.randint(100000, 999999)}"
-    user.verification_code = code
-    user.verification_code_expires = datetime.utcnow() + timedelta(minutes=15)
-    db.commit()
+        if user.verification_code and user.verification_code == user_in.code.strip():
+            user.verification_code = None
+            db.commit()
 
     token = create_access_token({"sub": user.email, "user_id": user.id})
     return {
@@ -189,9 +185,8 @@ def login_user(user_in: UserLogin, request: Request, db: Session = Depends(get_d
         "user_id": user.id,
         "email": user.email,
         "full_name": user.full_name,
-        "requires_2fa": True,
-        "dev_verification_code": code,
-        "message": f"A 6-digit login security code has been sent to {user.email}."
+        "requires_2fa": False,
+        "message": f"Welcome back, {user.full_name}!"
     }
 
 @router.post("/verify-login-code", response_model=Token)

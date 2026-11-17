@@ -81,6 +81,8 @@ export const LoginPage: React.FC = () => {
         msg = msg[0]?.msg?.replace('Value error, ', '') || JSON.stringify(msg);
       } else if (typeof msg === 'object' && msg?.msg) {
         msg = msg.msg.replace('Value error, ', '');
+      } else if (!err.response && err.message) {
+        msg = `Network connection error (${err.message}). Please ensure backend is reachable.`;
       }
       showToast(msg || 'Invalid email or password. Please try again.', 'error');
     } finally {

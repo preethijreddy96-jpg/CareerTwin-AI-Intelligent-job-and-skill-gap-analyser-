@@ -55,16 +55,32 @@ export const RegisterPage: React.FC = () => {
         password,
       });
 
-      setDevCode(res.data.dev_verification_code || null);
-      setVerificationCode(res.data.dev_verification_code || '');
-      setStep('verify');
-      showToast('Verification code generated! Please confirm your email.', 'info');
+      if (res.data.access_token) {
+        // Direct seamless login
+        login(res.data.access_token, {
+          id: res.data.user_id,
+          email: res.data.email,
+          full_name: res.data.full_name || fullName,
+        });
+        showToast(res.data.message || `Welcome to CareerTwin, ${res.data.full_name || fullName}!`, 'success');
+        navigate('/dashboard');
+      } else if (res.data.requires_verification) {
+        setDevCode(res.data.dev_verification_code || null);
+        setVerificationCode(res.data.dev_verification_code || '');
+        setStep('verify');
+        showToast('Verification code generated! Please confirm your email.', 'info');
+      } else {
+        showToast('Account ready! Please sign in.', 'success');
+        navigate('/login');
+      }
     } catch (err: any) {
       let msg = err.response?.data?.detail;
       if (Array.isArray(msg) && msg.length > 0) {
         msg = msg[0]?.msg?.replace('Value error, ', '') || JSON.stringify(msg);
       } else if (typeof msg === 'object' && msg?.msg) {
         msg = msg.msg.replace('Value error, ', '');
+      } else if (!err.response && err.message) {
+        msg = `Network error: ${err.message}. Please ensure the server is running.`;
       }
       showToast(msg || 'Registration failed. Please check your information.', 'error');
     } finally {

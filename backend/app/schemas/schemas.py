@@ -112,8 +112,12 @@ class ResendCodeRequest(BaseModel):
 class RegistrationResponse(BaseModel):
     message: str
     email: str
-    requires_verification: bool = True
+    requires_verification: bool = False
     dev_verification_code: Optional[str] = None
+    access_token: Optional[str] = None
+    token_type: Optional[str] = "bearer"
+    user_id: Optional[int] = None
+    full_name: Optional[str] = None
 
 class UserLogin(BaseModel):
     email: EmailStr
