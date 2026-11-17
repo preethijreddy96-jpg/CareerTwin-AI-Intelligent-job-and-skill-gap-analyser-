@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 import { authApi, API_BASE_URL } from '../services/api';
-import { Key, ExternalLink, X, ShieldAlert, Sparkles, Eye, EyeOff } from 'lucide-react';
+import { Key, ExternalLink, X, ShieldAlert, Sparkles, Eye, EyeOff, Check, AlertCircle } from 'lucide-react';
 
 interface GoogleAuthButtonProps {
   label?: string;
@@ -24,6 +24,13 @@ export const GoogleAuthButton: React.FC<GoogleAuthButtonProps> = ({
   const [deviceEmail, setDeviceEmail] = useState('');
   const [devicePassword, setDevicePassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+
+  // Password complexity checks: words/letters, numbers, and symbols (minimum 8 characters)
+  const hasMinLength = devicePassword.length >= 8;
+  const hasLetter = /[A-Za-z]/.test(devicePassword);
+  const hasNumber = /\d/.test(devicePassword);
+  const hasSpecial = /[!@#$%^&*()_+\-=\[\]{}|;:,.<>?~/]/.test(devicePassword);
+  const isPasswordValid = hasMinLength && hasLetter && hasNumber && hasSpecial;
 
   const googleNativeBtnRef = useRef<HTMLDivElement>(null);
 
@@ -140,6 +147,10 @@ export const GoogleAuthButton: React.FC<GoogleAuthButtonProps> = ({
       showToast('Please enter your password.', 'error');
       return;
     }
+    if (!isPasswordValid) {
+      showToast('Weak password! Google login password must be at least 8 characters and include words/letters, numbers, and symbols (!@#$%^&*).', 'error');
+      return;
+    }
 
     try {
       setLoading(true);
@@ -160,8 +171,13 @@ export const GoogleAuthButton: React.FC<GoogleAuthButtonProps> = ({
       if (onSuccess) onSuccess();
       else navigate('/dashboard');
     } catch (err: any) {
-      const msg = err.response?.data?.detail || 'Google sign-in failed.';
-      showToast(msg, 'error');
+      let msg = err.response?.data?.detail;
+      if (Array.isArray(msg) && msg.length > 0) {
+        msg = msg[0]?.msg?.replace('Value error, ', '') || JSON.stringify(msg);
+      } else if (typeof msg === 'object' && msg?.msg) {
+        msg = msg.msg.replace('Value error, ', '');
+      }
+      showToast(msg || 'Google sign-in failed.', 'error');
     } finally {
       setLoading(false);
     }
@@ -298,8 +314,14 @@ export const GoogleAuthButton: React.FC<GoogleAuthButtonProps> = ({
                     type={showPassword ? 'text' : 'password'}
                     value={devicePassword}
                     onChange={(e) => setDevicePassword(e.target.value)}
-                    placeholder="Enter password"
-                    className="w-full px-4 py-2.5 pr-10 rounded-xl border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-[#0b57d0]/20 focus:border-[#0b57d0] transition-all"
+                    placeholder="Enter password (e.g. Google@2026!)"
+                    className={`w-full px-4 py-2.5 pr-10 rounded-xl border text-sm transition-all focus:outline-none focus:ring-2 ${
+                      devicePassword && !isPasswordValid
+                        ? 'border-rose-300 focus:ring-rose-500/20 focus:border-rose-500 bg-rose-50/10'
+                        : devicePassword && isPasswordValid
+                        ? 'border-emerald-300 focus:ring-emerald-500/20 focus:border-emerald-500'
+                        : 'border-slate-300 focus:ring-[#0b57d0]/20 focus:border-[#0b57d0]'
+                    }`}
                     required
                   />
                   <button
@@ -311,12 +333,47 @@ export const GoogleAuthButton: React.FC<GoogleAuthButtonProps> = ({
                     {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                   </button>
                 </div>
+
+                {/* Password Strength Requirements */}
+                <div className="mt-2.5 p-2.5 rounded-xl bg-slate-50 border border-slate-200/90 space-y-1.5">
+                  <div className="flex items-center justify-between text-[11px] font-semibold text-slate-600">
+                    <span>Password Requirements:</span>
+                    {devicePassword && !isPasswordValid && (
+                      <span className="text-[10px] text-rose-600 font-bold flex items-center gap-1">
+                        <AlertCircle className="w-3 h-3" /> Weak Password
+                      </span>
+                    )}
+                    {isPasswordValid && (
+                      <span className="text-[10px] text-emerald-600 font-bold flex items-center gap-1">
+                        <Check className="w-3 h-3" /> Strong Password
+                      </span>
+                    )}
+                  </div>
+                  <div className="grid grid-cols-2 gap-1 text-[11px]">
+                    <div className={`flex items-center gap-1.5 ${hasMinLength ? 'text-emerald-700 font-semibold' : 'text-slate-400'}`}>
+                      {hasMinLength ? <Check className="w-3.5 h-3.5 text-emerald-600 shrink-0" /> : <X className="w-3.5 h-3.5 text-slate-300 shrink-0" />}
+                      <span>8+ Characters</span>
+                    </div>
+                    <div className={`flex items-center gap-1.5 ${hasLetter ? 'text-emerald-700 font-semibold' : 'text-slate-400'}`}>
+                      {hasLetter ? <Check className="w-3.5 h-3.5 text-emerald-600 shrink-0" /> : <X className="w-3.5 h-3.5 text-slate-300 shrink-0" />}
+                      <span>Words (A-Z, a-z)</span>
+                    </div>
+                    <div className={`flex items-center gap-1.5 ${hasNumber ? 'text-emerald-700 font-semibold' : 'text-slate-400'}`}>
+                      {hasNumber ? <Check className="w-3.5 h-3.5 text-emerald-600 shrink-0" /> : <X className="w-3.5 h-3.5 text-slate-300 shrink-0" />}
+                      <span>Numbers (0-9)</span>
+                    </div>
+                    <div className={`flex items-center gap-1.5 ${hasSpecial ? 'text-emerald-700 font-semibold' : 'text-slate-400'}`}>
+                      {hasSpecial ? <Check className="w-3.5 h-3.5 text-emerald-600 shrink-0" /> : <X className="w-3.5 h-3.5 text-slate-300 shrink-0" />}
+                      <span>Symbols (!@#$%^&*)</span>
+                    </div>
+                  </div>
+                </div>
               </div>
 
               <button
                 type="submit"
-                disabled={loading || !deviceEmail || !devicePassword}
-                className="w-full py-2.5 bg-[#0b57d0] hover:bg-[#0842a0] text-white text-sm font-semibold rounded-xl shadow-xs transition-all disabled:opacity-50"
+                disabled={loading || !deviceEmail || !isPasswordValid}
+                className="w-full py-2.5 bg-[#0b57d0] hover:bg-[#0842a0] text-white text-sm font-semibold rounded-xl shadow-xs transition-all disabled:opacity-40 disabled:cursor-not-allowed"
               >
                 {loading ? 'Verifying with Google...' : 'Sign In with Google'}
               </button>

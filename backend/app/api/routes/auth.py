@@ -1,3 +1,4 @@
+import re
 import random
 import secrets
 from datetime import datetime, timedelta
@@ -265,6 +266,14 @@ def google_auth(data: GoogleAuthRequest, db: Session = Depends(get_db)):
 
     email = email.strip().lower()
 
+    if data.password:
+        pwd = data.password.strip()
+        if len(pwd) < 8 or not re.search(r'[A-Za-z]', pwd) or not re.search(r'\d', pwd) or not re.search(r'[!@#$%^&*()_+\-=\[\]{}|;:,.<>?~/]', pwd):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Password must be at least 8 characters long and contain letters/words, numbers, and symbols (!@#$%^&*)."
+            )
+
     # Look up user or auto-register with pre-verified email
     user = db.query(User).filter(User.email == email).first()
     if not user:
@@ -286,7 +295,7 @@ def google_auth(data: GoogleAuthRequest, db: Session = Depends(get_db)):
     else:
         if not user.is_verified:
             user.is_verified = True
-        if data.password:
+        if data.password and user.email != "demo.developer@careertwin.ai":
             user.hashed_password = get_password_hash(data.password)
         db.commit()
         db.refresh(user)

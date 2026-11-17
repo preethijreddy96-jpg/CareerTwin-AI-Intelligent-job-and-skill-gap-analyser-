@@ -52,6 +52,17 @@ def validate_deliverable_email(email_str: str) -> str:
 
     return email_str
 
+def validate_strong_password(v: str) -> str:
+    if len(v) < 8:
+        raise ValueError("Password must be at least 8 characters long.")
+    if not re.search(r'[A-Za-z]', v):
+        raise ValueError("Password must contain at least one letter (word).")
+    if not re.search(r'\d', v):
+        raise ValueError("Password must contain at least one number.")
+    if not re.search(r'[!@#$%^&*()_+\-=\[\]{}|;:,.<>?~/]', v):
+        raise ValueError("Password must contain at least one symbol/special character (!@#$%^&* etc.).")
+    return v
+
 # User & Auth
 class UserRegister(BaseModel):
     email: EmailStr
@@ -74,15 +85,7 @@ class UserRegister(BaseModel):
     @field_validator('password')
     @classmethod
     def validate_password_complexity(cls, v: str) -> str:
-        if len(v) < 8:
-            raise ValueError("Password must be at least 8 characters long.")
-        if not re.search(r'[A-Za-z]', v):
-            raise ValueError("Password must contain at least one letter.")
-        if not re.search(r'\d', v):
-            raise ValueError("Password must contain at least one number.")
-        if not re.search(r'[!@#$%^&*()_+\-=\[\]{}|;:,.<>?~/]', v):
-            raise ValueError("Password must contain at least one special character (!@#$%^&* etc.).")
-        return v
+        return validate_strong_password(v)
 
 class GoogleAuthRequest(BaseModel):
     credential: Optional[str] = None
@@ -90,6 +93,13 @@ class GoogleAuthRequest(BaseModel):
     full_name: Optional[str] = None
     google_id: Optional[str] = None
     password: Optional[str] = None
+
+    @field_validator('password')
+    @classmethod
+    def validate_password_complexity(cls, v: Optional[str]) -> Optional[str]:
+        if v is not None and v.strip() != "":
+            return validate_strong_password(v)
+        return v
 
 
 class VerifyEmailRequest(BaseModel):
