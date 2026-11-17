@@ -32,5 +32,5 @@ class InMemoryRateLimiter:
 
         self.requests[key].append(now)
 
-# Instantiate rate limiters
-auth_rate_limiter = InMemoryRateLimiter(max_requests=15, window_seconds=60)
+# Instantiate rate limiters with generous threshold for seamless user access
+auth_rate_limiter = InMemoryRateLimiter(max_requests=100, window_seconds=60)

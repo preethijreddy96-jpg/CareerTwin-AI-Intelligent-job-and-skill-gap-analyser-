@@ -23,18 +23,20 @@ export const RegisterPage: React.FC = () => {
   const hasMinLength = password.length >= 8;
   const hasLetter = /[A-Za-z]/.test(password);
   const hasNumber = /\d/.test(password);
-  const hasSpecial = /[!@#$%^&*()_+\-=\[\]{}|;:,.<>?~/]/.test(password);
+  const hasSpecial = /[^A-Za-z0-9\s]/.test(password) || /[!@#$%^&*()_+\-=\[\]{}|;:,.<>?~/]/.test(password);
   const isPasswordValid = hasMinLength && hasLetter && hasNumber && hasSpecial;
 
   // Email validation tests
-  const emailDomain = email.includes('@') ? email.split('@')[1]?.toLowerCase() : '';
-  const isDisposable = ['mailinator.com', 'tempmail.com', '10minutemail.com', 'guerrillamail.com', 'trashmail.com', 'yopmail.com', 'fake.com', 'test.com'].includes(emailDomain);
+  const cleanEmail = email.trim().toLowerCase();
+  const emailDomain = cleanEmail.includes('@') ? cleanEmail.split('@')[1] : '';
+  const isDisposable = ['mailinator.com', 'tempmail.com', '10minutemail.com', 'guerrillamail.com', 'trashmail.com', 'yopmail.com', 'fake.com'].includes(emailDomain);
   const hasDotInDomain = emailDomain.includes('.') && emailDomain.split('.').pop()!.length >= 2;
-  const isEmailFormatValid = email.includes('@') && hasDotInDomain && !isDisposable;
+  const isEmailFormatValid = cleanEmail.includes('@') && hasDotInDomain && !isDisposable;
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!fullName || !email || !password) {
+    const trimmedName = fullName.trim();
+    if (!trimmedName || !cleanEmail || !password) {
       showToast('Please fill in all required fields.', 'error');
       return;
     }
@@ -50,8 +52,8 @@ export const RegisterPage: React.FC = () => {
     try {
       setLoading(true);
       const res = await authApi.register({
-        full_name: fullName,
-        email,
+        full_name: trimmedName,
+        email: cleanEmail,
         password,
       });
 

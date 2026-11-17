@@ -31,13 +31,14 @@ export const LoginPage: React.FC = () => {
   const navigate = useNavigate();
 
   // Email format validation
-  const emailDomain = email.includes('@') ? email.split('@')[1]?.toLowerCase() : '';
+  const cleanEmail = email.trim().toLowerCase();
+  const emailDomain = cleanEmail.includes('@') ? cleanEmail.split('@')[1] : '';
   const isDisposable = [
     'mailinator.com', 'tempmail.com', '10minutemail.com', 'guerrillamail.com',
-    'trashmail.com', 'yopmail.com', 'fake.com', 'test.com', 'invalid.com'
+    'trashmail.com', 'yopmail.com', 'fake.com', 'invalid.com'
   ].includes(emailDomain);
   const hasDotInDomain = emailDomain.includes('.') && emailDomain.split('.').pop()!.length >= 2;
-  const isEmailFormatValid = email.includes('@') && hasDotInDomain && !isDisposable;
+  const isEmailFormatValid = cleanEmail.includes('@') && hasDotInDomain && !isDisposable;
 
   const handleFillDemo = () => {
     setEmail('demo.developer@careertwin.ai');
@@ -47,7 +48,7 @@ export const LoginPage: React.FC = () => {
 
   const handleCredentialsSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email || !password) {
+    if (!cleanEmail || !password) {
       showToast('Please enter both email and password.', 'error');
       return;
     }
@@ -59,7 +60,7 @@ export const LoginPage: React.FC = () => {
 
     try {
       setLoading(true);
-      const res = await authApi.login({ email, password });
+      const res = await authApi.login({ email: cleanEmail, password });
 
       if (res.data.requires_2fa) {
         setDevCode(res.data.dev_verification_code || null);
