@@ -7,6 +7,10 @@ export default defineConfig({
     port: 5173,
     host: true,
     proxy: {
+      '/api/auth': {
+        target: 'http://127.0.0.1:5001',
+        changeOrigin: true
+      },
       '/api': {
         target: 'http://127.0.0.1:8001',
         changeOrigin: true
@@ -14,4 +18,3 @@ export default defineConfig({
     }
   }
 });
-
