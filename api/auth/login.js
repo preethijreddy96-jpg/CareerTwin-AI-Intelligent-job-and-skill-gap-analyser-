@@ -32,6 +32,16 @@ module.exports = async (req, res) => {
 
   const cleanEmail = email.trim().toLowerCase();
   const isDemo = cleanEmail === 'demo.developer@careertwin.ai';
+
+  if (isDemo) {
+    const validPasswords = ['DemoCareer2026!#', 'DemoCareer2026!', 'DemoCareer2026'];
+    if (!validPasswords.includes(password)) {
+      return res.status(401).json({ detail: 'Incorrect email or password. Please check your credentials.' });
+    }
+  } else if (password.length < 6) {
+    return res.status(401).json({ detail: 'Password must be at least 6 characters long.' });
+  }
+
   const fullName = isDemo ? 'Demo Candidate' : cleanEmail.split('@')[0];
   const userId = isDemo ? 2 : Math.floor(Date.now() % 1000000);
   const token = createSimpleJwt({ sub: cleanEmail, user_id: userId });

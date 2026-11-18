@@ -4,8 +4,12 @@
   "framework": "vite",
   "rewrites": [
     {
-      "source": "/api/auth/:match*",
-      "destination": "/api/auth/:match*"
+      "source": "/api/auth/google/status",
+      "destination": "/api/auth/google-status"
+    },
+    {
+      "source": "/api/auth/:path*",
+      "destination": "/api/auth/:path*"
     },
     {
       "source": "/(.*)",
