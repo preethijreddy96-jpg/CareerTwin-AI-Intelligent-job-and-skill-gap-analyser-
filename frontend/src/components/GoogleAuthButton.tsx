@@ -144,7 +144,7 @@ export const GoogleAuthButton: React.FC<GoogleAuthButtonProps> = ({
       return;
     }
     if (!isPasswordValid) {
-      showToast('Weak password! Google login password must be at least 8 characters and include words/letters, numbers, and symbols (!@#$%^&*).', 'error');
+      showToast('Password must be at least 6 characters long.', 'error');
       return;
     }
 
@@ -167,11 +167,15 @@ export const GoogleAuthButton: React.FC<GoogleAuthButtonProps> = ({
       if (onSuccess) onSuccess();
       else navigate('/dashboard');
     } catch (err: any) {
-      let msg = err.response?.data?.detail;
+      let msg = typeof err.response?.data === 'string'
+        ? err.response.data
+        : (err.response?.data?.detail || err.response?.data?.message);
       if (Array.isArray(msg) && msg.length > 0) {
         msg = msg[0]?.msg?.replace('Value error, ', '') || JSON.stringify(msg);
       } else if (typeof msg === 'object' && msg?.msg) {
         msg = msg.msg.replace('Value error, ', '');
+      } else if (!err.response && err.message) {
+        msg = `Network connection error (${err.message}). Please ensure backend is reachable.`;
       }
       showToast(msg || 'Google sign-in failed.', 'error');
     } finally {
